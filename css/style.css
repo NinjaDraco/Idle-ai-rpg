@@ -668,3 +668,92 @@ html, body {
   background: rgba(139,92,246,0.2); border-color: var(--accent2); color: var(--accent2);
 }
 .anim-toggle-btn:hover { filter: brightness(1.2); }
+
+/* ─── Star Badges ─────────────────────────────────────────── */
+.star-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  color: #fbbf24;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-shadow: 0 0 6px rgba(251, 191, 36, 0.6);
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.2);
+  vertical-align: middle;
+}
+
+/* ─── 100x Gacha Summary & Grid Layout ───────────────────── */
+.summon-summary-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  align-items: center;
+  justify-content: space-around;
+}
+
+.summon-summary-bar .summary-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--r-sm);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.summon-grid-container {
+  max-height: 380px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px;
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+}
+
+.summon-card-mini {
+  background: var(--bg-card);
+  border: 1px solid;
+  border-radius: var(--r-sm);
+  padding: 6px 4px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.summon-card-mini .src-icon {
+  font-size: 1.2rem;
+  margin-bottom: 2px;
+}
+
+.summon-card-mini .src-name {
+  font-size: 0.62rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.summon-card-mini .src-rar {
+  font-size: 0.55rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}

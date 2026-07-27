@@ -270,7 +270,7 @@ EN.cmp = function(a, b) {
   return 0;
 };
 EN.eq   = (a, b) => EN.cmp(a, b) === 0;
-EN.le   = (a, b) => EN.cmp(a, b) < 0;
+EN.le   = (a, b) => EN.cmp(a, b) <= 0;
 EN.me   = (a, b) => EN.cmp(a, b) > 0;
 EN.gt   = (a, b) => EN.cmp(a, b) > 0;
 EN.lt   = (a, b) => EN.cmp(a, b) < 0;

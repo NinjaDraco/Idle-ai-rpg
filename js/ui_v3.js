@@ -244,7 +244,7 @@ UI.renderEquipment = function() {
           <span class="item-rarity" style="color:${rar.color}">${rar.name}</span>
           <span class="item-upgrade-badge">+${item.upgradeLevel}</span>
         </div>
-        <div class="item-name">${item.name}</div>
+        <div class="item-name">${item.name} ${(item.starCount || 0) > 0 ? `<span class="star-badge">⭐${item.starCount}</span>` : ''}</div>
         <div class="item-affixes">
           ${(item.affixes || []).slice(0, 3).map(af => {
             const poolAf = (GAME_DATA.AFFIXES[slot.id] || []).find(a => a.id === af.id);
@@ -279,9 +279,12 @@ UI.renderEquipment = function() {
   const filterBox = document.createElement('div');
   filterBox.className = 'auto-sell-box';
   filterBox.innerHTML = `
-    <div class="auto-sell-title" style="display:flex;justify-content:space-between;align-items:center;">
+    <div class="auto-sell-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
       <span>⚙️ Auto-Dismantle Filter</span>
-      <label style="color:#a78bfa;font-weight:700;cursor:pointer;"><input type="checkbox" id="as-autoequip" ${G.save.autoEquip !== false ? 'checked' : ''} onchange="G.save.autoEquip=this.checked"> ⚡ Auto-Equip Better Drops</label>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <label style="color:#f472b6;font-weight:700;cursor:pointer;"><input type="checkbox" id="as-lower-equipped" ${G.save.autoDismantleLowerThanEquipped ? 'checked' : ''} onchange="G.save.autoDismantleLowerThanEquipped=this.checked"> 🛡️ Auto-Dismantle &lt; Equipped Rarity</label>
+        <label style="color:#a78bfa;font-weight:700;cursor:pointer;"><input type="checkbox" id="as-autoequip" ${G.save.autoEquip !== false ? 'checked' : ''} onchange="G.save.autoEquip=this.checked"> ⚡ Auto-Equip Better Drops</label>
+      </div>
     </div>
     <div class="auto-sell-options">
       <label><input type="checkbox" id="as-common" ${G.save.autoSell.common?'checked':''} onchange="G.save.autoSell.common=this.checked"> Common</label>
@@ -434,6 +437,7 @@ UI.doReroll = function(mode) {
 
 UI.itemCardHTML = function(item, showFull) {
   const rar = GAME_DATA.getRarityById(item.rarity);
+  const starCount = item ? (item.starCount || 0) : 0;
   const tierColors = ['#9e9e9e','#4caf50','#2196f3','#9c27b0','#ff9800'];
   const tierNames  = ['B','E','S','P','T'];
   let affixHtml = '';
@@ -451,12 +455,32 @@ UI.itemCardHTML = function(item, showFull) {
     <div class="icard-header">
       <span class="icard-icon">${item.icon}</span>
       <div>
-        <div class="icard-name">${item.name}</div>
-        <div class="icard-rarity" style="color:${rar.color}">${rar.name} ${item.upgradeLevel > 0 ? '+' + item.upgradeLevel : ''}</div>
+        <div class="icard-name">${item.name} ${starCount > 0 ? `<span class="star-badge">⭐${starCount}</span>` : ''}</div>
+        <div class="icard-rarity" style="color:${rar.color}">${rar.name} ${item.upgradeLevel > 0 ? '+' + item.upgradeLevel : ''} ${starCount > 0 ? `<span class="star-badge">⭐${starCount}</span>` : ''}</div>
       </div>
     </div>
     <div class="icard-affixes">${affixHtml}</div>
   </div>`;
+};
+
+UI.getItemTooltipHtml = function(item) {
+  if (!item) return '';
+  const rar = GAME_DATA.getRarityById(item.rarity);
+  const starCount = item.starCount || 0;
+  let html = `<div class="item-tooltip">
+    <div class="tt-header" style="color:${rar.color};font-weight:700;">
+      ${item.icon} ${item.name} ${starCount > 0 ? `<span class="star-badge">⭐${starCount}</span>` : ''}
+    </div>
+    <div class="tt-rarity" style="color:${rar.color}">${rar.name} ${item.upgradeLevel > 0 ? '+' + item.upgradeLevel : ''} ${starCount > 0 ? `<span class="star-badge">⭐${starCount}</span>` : ''}</div>`;
+  if (item.affixes && item.affixes.length > 0) {
+    html += `<div class="tt-affixes">`;
+    for (const af of item.affixes) {
+      html += `<div class="tt-affix">[T${af.tier + 1}] ${af.name}: +${(af.tierVal * 100).toFixed(1)}%</div>`;
+    }
+    html += `</div>`;
+  }
+  html += `</div>`;
+  return html;
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -527,7 +551,10 @@ UI.renderPets = function() {
   if (!globalPetLookup && typeof GAME_DATA !== 'undefined' && GAME_DATA.PETS) globalPetLookup = new Map(GAME_DATA.PETS.map(p => [p.id, p]));
   const ownedPetLookup = new Map(G.save.petCollection.map(p => [p.petId, p]));
 
-  let html = `<div class="panel-header"><h3>🐾 Active Pets (${G.save.petSlots} slots)</h3></div>
+  let html = `<div class="panel-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <h3>🐾 Active Pets (${G.save.petSlots} slots)</h3>
+    <button class="btn-primary" onclick="if(G.equipBestPets){G.equipBestPets();UI.showToast('Equipped Best Pets!','success');UI.renderPets();}" style="padding:6px 14px;font-size:0.8rem;cursor:pointer;">⚡ EQUIP BEST PETS</button>
+  </div>
   <div class="active-pets-row">`;
 
   for (let i = 0; i < G.save.petSlots; i++) {
@@ -535,10 +562,11 @@ UI.renderPets = function() {
     const pet   = pid && globalPetLookup ? globalPetLookup.get(pid) : null;
     const owned = pid ? ownedPetLookup.get(pid) : null;
     const rar   = pet ? GAME_DATA.getRarityById(pet.rarity) : null;
+    const starCount = owned ? (owned.starCount !== undefined ? owned.starCount : (owned.duplicates || owned.constellation || 0)) : 0;
     html += `<div class="pet-slot ${pet ? 'active' : 'empty'}" style="${rar ? 'border-color:'+rar.color+';box-shadow:'+rar.glow : ''}">
       ${pet ? `
         <div class="pet-icon">${pet.icon}</div>
-        <div class="pet-name" style="color:${rar.color}">${pet.name}</div>
+        <div class="pet-name" style="color:${rar.color}">${pet.name} ${starCount > 0 ? `<span class="star-badge">⭐${starCount}</span>` : ''}</div>
         <div class="pet-level">Lv.${owned ? owned.level : 1}${owned && owned.evolved ? ' ✨' : ''}</div>
         <div class="pet-passive">${pet.passive}</div>
         <button onclick="G.save.activePets[${i}]=null;G.computeStats();UI.renderPets();UI.renderRightPanel()" class="pet-remove">Unequip</button>
@@ -560,11 +588,12 @@ UI.renderPets = function() {
     const rar = GAME_DATA.getRarityById(pet.rarity);
     const evolveable = owned.level >= 50 && !owned.evolved && G.save.materials.petEssence >= 100;
     const isActive   = G.save.activePets.includes(pet.id);
+    const starCount  = owned.starCount !== undefined ? owned.starCount : (owned.duplicates || owned.constellation || 0);
     html += `<div class="pet-card ${isActive ? 'pet-active-card' : ''}" style="border-color:${rar.color}">
       <div class="petc-top">
         <span class="petc-icon">${pet.icon}</span>
         <div>
-          <div class="petc-name" style="color:${rar.color}">${pet.name}</div>
+          <div class="petc-name" style="color:${rar.color}">${pet.name} ${starCount > 0 ? `<span class="star-badge">⭐${starCount}</span>` : ''}</div>
           <div class="petc-rar">${rar.name}${owned.evolved ? ' ✨ Evolved' : ''}</div>
         </div>
       </div>
@@ -598,7 +627,10 @@ UI.renderSkills = function() {
   const el = document.getElementById('skills-panel');
   if (!el) return;
 
-  let html = `<div class="panel-header"><h3>⚡ Active Skill Slots (4)</h3></div><div class="skill-slots-row">`;
+  let html = `<div class="panel-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+    <h3>⚡ Active Skill Slots (4)</h3>
+    <button class="btn-primary" onclick="if(G.equipBestSkills){G.equipBestSkills();UI.showToast('Equipped Best Skills!','success');UI.renderSkills();}" style="padding:6px 14px;font-size:0.8rem;cursor:pointer;">⚡ EQUIP BEST SKILLS</button>
+  </div><div class="skill-slots-row">`;
   for (let i = 0; i < 4; i++) {
     const sid   = G.save.activeSkills[i];
     const skill = sid ? GAME_DATA.SKILLS.active.find(s => s.id === sid) : null;
@@ -637,10 +669,11 @@ UI.renderSkills = function() {
     if (!skill) continue;
     const rar  = GAME_DATA.getRarityById(skill.rarity);
     const type = owned.type;
+    const starCount = owned.starCount !== undefined ? owned.starCount : (owned.constellation || 0);
     html += `<div class="skill-card" style="border-color:${rar.color}">
       <div class="skc-icon">${skill.icon}</div>
       <div class="skc-info">
-        <div class="skc-name" style="color:${rar.color}">${skill.name} Lv.${owned.level}</div>
+        <div class="skc-name" style="color:${rar.color}">${skill.name} Lv.${owned.level} ${starCount > 0 ? `<span class="star-badge">⭐${starCount}</span>` : ''}</div>
         <div class="skc-type">${type.toUpperCase()} | ${rar.name}</div>
         <div class="skc-desc">${skill.desc}</div>
       </div>
@@ -814,11 +847,66 @@ UI.showSummonResult = function({ bannerId, results }) {
 
   const useAnim = G.save.showSummonAnim !== false;
 
+  const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'cosmic'];
+  const counts = {};
+  rarityOrder.forEach(r => counts[r] = 0);
+  results.forEach(r => {
+    const key = (r.rarity || '').toLowerCase();
+    counts[key] = (counts[key] || 0) + 1;
+  });
+
   let html = `<div class="summon-results-header" style="display:flex;justify-content:space-between;align-items:center;margin:15px 0 10px;padding:8px 12px;background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:8px;">
     <div style="font-weight:800;color:var(--gold);font-size:0.95rem;">🎉 SUMMON REWARDS (${results.length} PULLS)</div>
     <button onclick="document.getElementById('summon-result-area').innerHTML=''" style="padding:6px 14px;background:linear-gradient(90deg,#ef4444,#b91c1c);border:none;border-radius:6px;color:#fff;font-weight:700;cursor:pointer;font-size:0.8rem;box-shadow:0 0 10px rgba(239,68,68,0.4);">✕ Close / Clear</button>
   </div>`;
-  html += `<div class="summon-results ${useAnim ? 'anim-on' : ''}" style="padding:10px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px dashed var(--border);">` ;
+
+  html += `<div class="summon-summary-bar">`;
+  const allRarities = Array.from(new Set([...rarityOrder, ...Object.keys(counts)]));
+  for (const rKey of allRarities) {
+    const count = counts[rKey] || 0;
+    if (count === 0 && !rarityOrder.includes(rKey)) continue;
+    const rarObj = GAME_DATA.getRarityById ? GAME_DATA.getRarityById(rKey) : { name: rKey.toUpperCase(), color: '#fff' };
+    html += `<div class="summary-item" style="border-color:${rarObj.color}">
+      <span style="color:${rarObj.color}">${rarObj.name}:</span> <strong>${count}</strong>
+    </div>`;
+  }
+  html += `</div>`;
+
+  const highPulls = results.filter(r => ['legendary', 'mythic', 'cosmic', 'divine', 'eternal'].includes((r.rarity || '').toLowerCase()));
+  if (highPulls.length > 0) {
+    html += `<div class="summon-showcase" style="margin:10px 0;padding:10px;background:rgba(251,191,36,0.05);border:1px solid rgba(251,191,36,0.3);border-radius:10px;">
+      <div style="font-weight:800;color:#fbbf24;font-size:0.85rem;margin-bottom:8px;">🌟 HIGH RARITY HIGHLIGHTS (${highPulls.length})</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">`;
+    highPulls.forEach(r => {
+      let rar, name, icon;
+      if (r.type === 'pet') {
+        const pet = GAME_DATA.PETS.find(p => p.id === r.id);
+        rar  = GAME_DATA.getRarityById(r.rarity);
+        name = pet ? pet.name : r.id;
+        icon = pet ? pet.icon : '🐾';
+      } else if (r.type === 'skill') {
+        const sk = [...GAME_DATA.SKILLS.active, ...GAME_DATA.SKILLS.passive].find(s => s.id === r.id);
+        rar  = GAME_DATA.getRarityById(r.rarity);
+        name = sk ? sk.name : r.id;
+        icon = sk ? sk.icon : '⭐';
+      } else {
+        rar  = GAME_DATA.getRarityById(r.rarity);
+        name = r.item ? r.item.name : 'Item';
+        icon = r.item ? r.item.icon : '⚔️';
+      }
+      html += `<div class="summon-result-card high-rarity" style="border-color:${rar.color};">
+        <div class="src-face">
+          <div class="src-icon">${icon}</div>
+          <div class="src-name">${name}</div>
+          <div class="src-rar" style="color:${rar.color}">${rar.name}</div>
+          <div class="src-shine"></div>
+        </div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  html += `<div id="summon-grid-container" class="summon-grid-container ${useAnim ? 'anim-on' : ''}" style="max-height: 380px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px;">`;
   results.forEach((r, idx) => {
     let rar, name, icon;
     if (r.type === 'pet') {
@@ -840,16 +928,14 @@ UI.showSummonResult = function({ bannerId, results }) {
     const isHigh = ['epic','legendary','mythic','cosmic','divine','eternal'].includes(r.rarity);
     const isSuperHigh = ['mythic','cosmic','divine','eternal'].includes(r.rarity);
 
-    // Create shaking effect if it's super high rarity
     const shakeClass = isSuperHigh && useAnim ? 'shake-animation' : '';
 
-    // Scale animation delay for large pulls so it doesn't take forever
     let animDelay = idx * 0.10;
     if (results.length > 20) {
       animDelay = idx * 0.03;
     }
 
-    html += `<div class="summon-result-card ${useAnim ? 'summon-reveal' : ''} ${isHigh ? 'high-rarity' : ''} ${shakeClass}" style="border-color:${rar.color};${useAnim ? `animation-delay:${animDelay}s` : ''}">
+    html += `<div class="summon-card-mini summon-result-card ${useAnim ? 'summon-reveal' : ''} ${isHigh ? 'high-rarity' : ''} ${shakeClass}" style="border-color:${rar.color};${useAnim ? `animation-delay:${animDelay}s` : ''}" title="${name} (${rar.name})">
       <div class="src-face">
         <div class="src-icon">${icon}</div>
         <div class="src-name">${name}</div>

@@ -32,6 +32,10 @@ function safeEN(v, fallback = null) {
   return fallback || EN.fromNumber(0);
 }
 
+function getStarBonus(starCount) {
+  return Math.pow(safeNum(starCount), 0.75) * 0.25;
+}
+
 // ══════════════════════════════════════════════════════════════════
 // DEFAULT SAVE STATE
 // ══════════════════════════════════════════════════════════════════
@@ -83,6 +87,7 @@ function defaultSave() {
     },
     inventory: [],
     autoSell: { common: false, uncommon: false },
+    autoDismantleLowerThanEquipped: false,
     autoEquip: true,
 
     // Pets
@@ -271,10 +276,12 @@ function computeStats() {
   for (const slot of GAME_DATA.EQUIP_SLOTS) {
     const item = G.save.equipped[slot.id];
     if (!item) continue;
+    const starCount = item.starCount || item.duplicates || item.constellation || 0;
+    const starMult  = 1 + getStarBonus(starCount);
     for (const af of (item.affixes || [])) {
       if (!af) continue;
       const statKey = af.stat;
-      const tierVal = safeNum(af.tierVal, 0); // Guard against NaN affixes
+      const tierVal = safeNum(af.tierVal, 0) * starMult; // Guard against NaN affixes & apply star bonus
       const poolAf = (GAME_DATA.AFFIXES[item.slotId] || []).find(a => a.id === af.id);
 
       if (statKey in cs) {
@@ -296,9 +303,11 @@ function computeStats() {
     if (!pet) continue;
     const lvlBonus = owned ? (1 + owned.level * 0.03) : 1;
     const evolBonus = owned && owned.evolved ? 1.8 : 1;
-    cs.dmgMult    += pet.dmgAura  * lvlBonus * evolBonus * (1 + cs.petDmg);
-    cs.goldFind   += pet.goldAura * lvlBonus * evolBonus;
-    cs.critChance += pet.critAura * lvlBonus * evolBonus;
+    const petStarCount = owned ? (owned.starCount !== undefined ? owned.starCount : (owned.duplicates || owned.constellation || 0)) : 0;
+    const petStarMult  = 1 + getStarBonus(petStarCount);
+    cs.dmgMult    += pet.dmgAura  * lvlBonus * evolBonus * petStarMult * (1 + cs.petDmg);
+    cs.goldFind   += pet.goldAura * lvlBonus * evolBonus * petStarMult;
+    cs.critChance += pet.critAura * lvlBonus * evolBonus * petStarMult;
   }
 
   // Passive skills
@@ -308,9 +317,10 @@ function computeStats() {
     if (!sk) continue;
     const owned = G.save.skillCollection.find(s => s.skillId === sid);
     const lvl   = owned ? owned.level : 1;
-    const cst   = owned ? (1 + owned.constellation * 0.10) : 1;
+    const starCount = owned ? (owned.starCount !== undefined ? owned.starCount : (owned.constellation || 0)) : 0;
+    const starMult  = 1 + getStarBonus(starCount);
     if (sk.effect.stat in cs) {
-      cs[sk.effect.stat] += sk.effect.val * lvl * cst;
+      cs[sk.effect.stat] += sk.effect.val * lvl * starMult;
     }
   }
 
@@ -726,8 +736,53 @@ function generateItem(slotId, rarityId, zoneId) {
     affixes,
     upgradeLevel: 0,
     maxUpgrade: 20,
+    starCount: 0,
     zoneId: zoneId || G.save.currentZone,
   };
+}
+
+function processGearAcquisition(item) {
+  if (!item) return { action: 'none' };
+  if (item.starCount === undefined) item.starCount = 0;
+
+  // 1. Auto-sell check by rarity
+  if (G.save.autoSell && G.save.autoSell[item.rarity]) {
+    disenchantItem(item);
+    return { action: 'dismantled', item };
+  }
+
+  // 2. Smart Auto-Dismantle by Equipped Rarity check
+  if (G.save.autoDismantleLowerThanEquipped) {
+    const equippedItem = G.save.equipped[item.slotId];
+    if (equippedItem) {
+      const itemRarityIndex = GAME_DATA.RARITY_INDEX[item.rarity] || 0;
+      const equippedRarityIndex = GAME_DATA.RARITY_INDEX[equippedItem.rarity] || 0;
+      if (itemRarityIndex < equippedRarityIndex) {
+        disenchantItem(item);
+        return { action: 'dismantled', item };
+      }
+    }
+  }
+
+  // 3. Equipment duplicate handling (matching slotId, baseId, rarity)
+  let existing = null;
+  const equippedInSlot = G.save.equipped[item.slotId];
+  if (equippedInSlot && equippedInSlot.baseId === item.baseId && equippedInSlot.rarity === item.rarity) {
+    existing = equippedInSlot;
+  } else {
+    existing = G.save.inventory.find(i => i.slotId === item.slotId && i.baseId === item.baseId && i.rarity === item.rarity);
+  }
+
+  if (existing) {
+    existing.starCount = (existing.starCount || 0) + 1;
+    G.computedStats = computeStats();
+    return { action: 'duplicate', item: existing };
+  }
+
+  // 4. Regular inventory addition & auto-equip check
+  G.save.inventory.push(item);
+  if (G.save.autoEquip) autoEquipCheck(item);
+  return { action: 'added', item };
 }
 
 function dropItem(enemy) {
@@ -737,18 +792,15 @@ function dropItem(enemy) {
   const rarityId = GAME_DATA.rollRarity(bias);
   const item   = generateItem(slotId, rarityId, enemy.zoneId);
 
-  // Auto-sell check
-  if (G.save.autoSell && G.save.autoSell[rarityId]) {
-    disenchantItem(item);
+  const res = processGearAcquisition(item);
+  if (res.action === 'dismantled') {
     addLog(`✨ Auto-dismantled [${rarityId}] ${item.name}`, 'loot');
-    return;
+  } else if (res.action === 'duplicate') {
+    addLog(`⭐ Duplicate gear upgraded: [${item.rarity.toUpperCase()}] ${item.name} (+1 Star, Total: ${res.item.starCount})`, 'loot');
+  } else {
+    addLog(`🎁 Dropped: [${item.rarity.toUpperCase()}] ${item.name}`, 'loot');
+    G.events.emit('itemDrop', item);
   }
-
-  G.save.inventory.push(item);
-  addLog(`🎁 Dropped: [${item.rarity.toUpperCase()}] ${item.name}`, 'loot');
-
-  if (G.save.autoEquip) autoEquipCheck(item);
-  G.events.emit('itemDrop', item);
 }
 
 function equipItem(item) {
@@ -943,10 +995,11 @@ function addPet(petId) {
   const existing = G.save.petCollection.find(p => p.petId === petId);
   if (existing) {
     existing.duplicates = (existing.duplicates || 0) + 1;
-    existing.constellation = Math.min((existing.constellation || 0) + 1, 6);
+    existing.starCount = (existing.starCount || 0) + 1;
+    existing.constellation = existing.starCount;
     G.save.materials.petEssence += 5;
   } else {
-    G.save.petCollection.push({ petId, level: 1, exp: 0, evolved: false, constellation: 0, duplicates: 0 });
+    G.save.petCollection.push({ petId, level: 1, exp: 0, evolved: false, starCount: 0, constellation: 0, duplicates: 0 });
   }
   G.events.emit('petAdded', petId);
 }
@@ -982,10 +1035,11 @@ function levelPet(petId) {
 function addSkill(skillId, type) {
   const existing = G.save.skillCollection.find(s => s.skillId === skillId);
   if (existing) {
-    existing.constellation = Math.min((existing.constellation || 0) + 1, 6);
+    existing.starCount = (existing.starCount || 0) + 1;
+    existing.constellation = existing.starCount;
     existing.level = Math.min(existing.level + 1, 10);
   } else {
-    G.save.skillCollection.push({ skillId, type, level: 1, constellation: 0 });
+    G.save.skillCollection.push({ skillId, type, level: 1, starCount: 0, constellation: 0 });
   }
   G.events.emit('skillAdded', skillId);
 }
@@ -1004,8 +1058,9 @@ function useSkill(slot) {
   G.save.skillCooldowns[sid] = now;
   const owned = G.save.skillCollection.find(s => s.skillId === sid);
   const lvlBonus = owned ? (1 + (owned.level - 1) * 0.2) : 1;
-  const constBonus = owned ? (1 + owned.constellation * 0.1) : 1;
-  const totalMult = skill.dmgMult * (1 + cs.skillDmg) * lvlBonus * constBonus;
+  const starCount = owned ? (owned.starCount !== undefined ? owned.starCount : (owned.constellation || 0)) : 0;
+  const starMult = 1 + getStarBonus(starCount);
+  const totalMult = skill.dmgMult * (1 + cs.skillDmg) * lvlBonus * starMult;
 
   dealDamage(totalMult);
   addLog(`💫 Skill: ${skill.name} (×${totalMult.toFixed(1)} dmg)`, 'skill');
@@ -1027,7 +1082,7 @@ function summon(bannerId, count = 1) {
   const banner = GAME_DATA.BANNERS.find(b => b.id === bannerId);
   if (!banner) return [];
   const cost = getSummonCost(count);
-  if (EN.le(G.save.gold, cost)) return [];
+  if (EN.lt(G.save.gold, cost)) return [];
   G.save.gold = EN.sub(G.save.gold, cost);
 
   const results = [];
@@ -1066,9 +1121,8 @@ function summon(bannerId, count = 1) {
       const slots = GAME_DATA.EQUIP_SLOTS.map(s => s.id);
       const slotId = slots[Math.floor(Math.random() * slots.length)];
       const item   = generateItem(slotId, rarityId);
-      G.save.inventory.push(item);
-      if (G.save.autoEquip) autoEquipCheck(item);
-      results.push({ type: 'gear', item, rarity: rarityId });
+      const res    = processGearAcquisition(item);
+      results.push({ type: 'gear', item: res.item || item, rarity: rarityId });
     }
   }
 
@@ -1281,7 +1335,9 @@ function gameTick() {
         const pet = GAME_DATA.PETS.find(p => p.id === pid);
         const owned = G.save.petCollection.find(p => p.petId === pid);
         if (!pet) continue;
-        const petDmg = EN.mul(G.baseDmg, EN.fromNumber(pet.dmgAura * (1 + (owned ? owned.level * 0.05 : 0))));
+        const petStarCount = owned ? (owned.starCount !== undefined ? owned.starCount : (owned.duplicates || owned.constellation || 0)) : 0;
+        const petStarMult  = 1 + getStarBonus(petStarCount);
+        const petDmg = EN.mul(G.baseDmg, EN.fromNumber(pet.dmgAura * (1 + (owned ? owned.level * 0.05 : 0)) * petStarMult));
         petDmgTotal = EN.add(petDmgTotal, petDmg);
       }
       if (EN.me(petDmgTotal, EN.fromNumber(0))) {
@@ -1394,6 +1450,87 @@ function buyDungeonUpgrade(upId) {
 // ══════════════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════════════
+function equipBestPets() {
+  if (!G.save.petCollection || G.save.petCollection.length === 0) return;
+  const sorted = [...G.save.petCollection].sort((a, b) => {
+    const pA = GAME_DATA.PETS.find(p => p.id === a.petId);
+    const pB = GAME_DATA.PETS.find(p => p.id === b.petId);
+    const rarA = GAME_DATA.RARITY_INDEX[pA ? pA.rarity : 'common'] || 0;
+    const rarB = GAME_DATA.RARITY_INDEX[pB ? pB.rarity : 'common'] || 0;
+    if (rarA !== rarB) return rarB - rarA;
+
+    const starA = a.starCount !== undefined ? a.starCount : (a.constellation || 0);
+    const starB = b.starCount !== undefined ? b.starCount : (b.constellation || 0);
+    if (starA !== starB) return starB - starA;
+
+    const lvlA = a.level || 1;
+    const lvlB = b.level || 1;
+    return lvlB - lvlA;
+  });
+
+  const slotCount = G.save.petSlots || 3;
+  for (let i = 0; i < slotCount; i++) {
+    G.save.activePets[i] = sorted[i] ? sorted[i].petId : null;
+  }
+  G.computedStats = computeStats();
+}
+
+function equipBestSkills() {
+  if (!G.save.skillCollection || G.save.skillCollection.length === 0) return;
+
+  // Active skills
+  const activeOwned = G.save.skillCollection.filter(s => {
+    if (s.type === 'active') return true;
+    return GAME_DATA.SKILLS.active.some(sk => sk.id === s.skillId);
+  });
+  activeOwned.sort((a, b) => {
+    const skA = GAME_DATA.SKILLS.active.find(sk => sk.id === a.skillId);
+    const skB = GAME_DATA.SKILLS.active.find(sk => sk.id === b.skillId);
+    const rarA = GAME_DATA.RARITY_INDEX[skA ? skA.rarity : 'common'] || 0;
+    const rarB = GAME_DATA.RARITY_INDEX[skB ? skB.rarity : 'common'] || 0;
+    if (rarA !== rarB) return rarB - rarA;
+
+    const starA = a.starCount !== undefined ? a.starCount : (a.constellation || 0);
+    const starB = b.starCount !== undefined ? b.starCount : (b.constellation || 0);
+    if (starA !== starB) return starB - starA;
+
+    const lvlA = a.level || 1;
+    const lvlB = b.level || 1;
+    return lvlB - lvlA;
+  });
+
+  for (let i = 0; i < 4; i++) {
+    G.save.activeSkills[i] = activeOwned[i] ? activeOwned[i].skillId : null;
+  }
+
+  // Passive skills
+  const passiveOwned = G.save.skillCollection.filter(s => {
+    if (s.type === 'passive') return true;
+    return GAME_DATA.SKILLS.passive.some(sk => sk.id === s.skillId);
+  });
+  passiveOwned.sort((a, b) => {
+    const skA = GAME_DATA.SKILLS.passive.find(sk => sk.id === a.skillId);
+    const skB = GAME_DATA.SKILLS.passive.find(sk => sk.id === b.skillId);
+    const rarA = GAME_DATA.RARITY_INDEX[skA ? skA.rarity : 'common'] || 0;
+    const rarB = GAME_DATA.RARITY_INDEX[skB ? skB.rarity : 'common'] || 0;
+    if (rarA !== rarB) return rarB - rarA;
+
+    const starA = a.starCount !== undefined ? a.starCount : (a.constellation || 0);
+    const starB = b.starCount !== undefined ? b.starCount : (b.constellation || 0);
+    if (starA !== starB) return starB - starA;
+
+    const lvlA = a.level || 1;
+    const lvlB = b.level || 1;
+    return lvlB - lvlA;
+  });
+
+  for (let i = 0; i < 8; i++) {
+    G.save.passiveSkills[i] = passiveOwned[i] ? passiveOwned[i].skillId : null;
+  }
+
+  G.computedStats = computeStats();
+}
+
 function initGame() {
   const saved = loadGame();
   G.save = saved || defaultSave();
@@ -1410,6 +1547,7 @@ function initGame() {
 
   if (!G.save.materials) G.save.materials = defaultSave().materials;
   if (!G.save.autoSell) G.save.autoSell = { common: false, uncommon: false };
+  if (G.save.autoDismantleLowerThanEquipped === undefined) G.save.autoDismantleLowerThanEquipped = false;
   if (G.save.autoEquip === undefined) G.save.autoEquip = true;
   if (!G.save.relicLevels) G.save.relicLevels = {};
   if (G.save.showSummonAnim === undefined) G.save.showSummonAnim = true;
@@ -1418,6 +1556,39 @@ function initGame() {
   if (G.save.dungeonTokens === undefined) G.save.dungeonTokens = 0;
   if (!G.save.dungeonUpgrades) G.save.dungeonUpgrades = {};
   G.save.activeDungeon = null; // Reset raid state on reload
+
+  // Migrate starCount for pets, skills, and equipment
+  if (Array.isArray(G.save.petCollection)) {
+    for (const p of G.save.petCollection) {
+      if (p.starCount === undefined) {
+        p.starCount = p.duplicates || p.constellation || 0;
+      }
+      p.constellation = p.starCount;
+    }
+  }
+  if (Array.isArray(G.save.skillCollection)) {
+    for (const s of G.save.skillCollection) {
+      if (s.starCount === undefined) {
+        s.starCount = s.constellation || 0;
+      }
+      s.constellation = s.starCount;
+    }
+  }
+  if (Array.isArray(G.save.inventory)) {
+    for (const item of G.save.inventory) {
+      if (item && item.starCount === undefined) {
+        item.starCount = 0;
+      }
+    }
+  }
+  if (G.save.equipped) {
+    for (const slotId in G.save.equipped) {
+      const item = G.save.equipped[slotId];
+      if (item && item.starCount === undefined) {
+        item.starCount = 0;
+      }
+    }
+  }
 
   while (G.save.activePets.length < 5) G.save.activePets.push(null);
   while (G.save.activeSkills.length < 4) G.save.activeSkills.push(null);
@@ -1471,6 +1642,10 @@ function initGame() {
   G.saveGame        = saveGame;
   G.exportSave      = exportSave;
   G.importSave      = importSave;
+  G.getStarBonus    = getStarBonus;
+  G.equipBestPets   = equipBestPets;
+  G.equipBestSkills = equipBestSkills;
+  G.processGearAcquisition = processGearAcquisition;
 
   console.log('🎮 Eternity RPG Engine v4 (Tap Titans Edition) Ready!');
 }
