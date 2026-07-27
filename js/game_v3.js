@@ -395,17 +395,30 @@ function computeStats() {
 
   // Stage pass stackable bonus & Big Zone Pass Mastery (Tap Titans style scaling)
   const maxStg = (G.save.maxStage || 1);
-  const stagePassBonus = (maxStg - 1) * 0.05; // +5% Gold & EXP per stage cleared!
-  cs.goldFind *= (1 + stagePassBonus);
-  cs.expBonus *= (1 + stagePassBonus);
+  if (isMultMode) {
+    cs.goldFind *= Math.pow(1.05, maxStg - 1);
+    cs.expBonus *= Math.pow(1.05, maxStg - 1);
+  } else {
+    const stagePassBonus = (maxStg - 1) * 0.05; // +5% Gold & EXP per stage cleared!
+    cs.goldFind *= (1 + stagePassBonus);
+    cs.expBonus *= (1 + stagePassBonus);
+  }
   
   const bigZonesCleared = Math.floor((maxStg - 1) / 10);
   if (bigZonesCleared > 0) {
-    const zoneMult = 1 + (bigZonesCleared * 0.15); // +15% Core Stats per big zone cleared!
-    cs.dmgMult    *= zoneMult;
-    cs.goldFind   *= zoneMult;
-    cs.expBonus   *= zoneMult;
-    cs.dropRate   *= zoneMult;
+    if (isMultMode) {
+      const zoneMult = Math.pow(1.15, bigZonesCleared); // +15% Core Stats per big zone cleared!
+      cs.dmgMult    *= zoneMult;
+      cs.goldFind   *= zoneMult;
+      cs.expBonus   *= zoneMult;
+      cs.dropRate   *= zoneMult;
+    } else {
+      const zoneMult = 1 + (bigZonesCleared * 0.15); // +15% Core Stats per big zone cleared!
+      cs.dmgMult    *= zoneMult;
+      cs.goldFind   *= zoneMult;
+      cs.expBonus   *= zoneMult;
+      cs.dropRate   *= zoneMult;
+    }
   }
 
   // Dungeon Upgrades & Level Clears
@@ -449,7 +462,14 @@ function computeStats() {
   const starDpsMult = Math.min(1e300, Math.pow(1.5, totalStars));
   cs.dmgMult  *= cs.finalDmgMult * starDpsMult;
   cs.petDmg   *= cs.finalPetMult;
-  cs.goldFind *= cs.finalGoldMult;
+  
+  // Star Gold Booster in Multiplicative Mode: 1.3^stars up to 1e300 to boost Gold Find to the sky!
+  if (isMultMode) {
+    const starGoldMult = Math.min(1e300, Math.pow(1.3, totalStars));
+    cs.goldFind *= cs.finalGoldMult * starGoldMult;
+  } else {
+    cs.goldFind *= cs.finalGoldMult;
+  }
 
   // Caps (CRIT CHANCE CAP REMOVED FOR WARFRAME MULTI-CRIT!)
   cs.dodgeChance  = Math.min(cs.dodgeChance, 0.75);
