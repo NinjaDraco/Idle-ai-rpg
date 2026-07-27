@@ -337,6 +337,33 @@ test('UI renders STAGE X header, Monsters tracker during regular, Boss timer dur
 });
 
 // ------------------------------------------------------------------
+// 5.5. Testing Improvement: UI Utility functions (setText)
+// ------------------------------------------------------------------
+console.log('\n--- Testing Improvement: UI Utility functions (setText) ---');
+
+test('setText properly updates textContent and safely handles null elements', () => {
+  // Test 1: Happy path - element exists
+  const testId = 'test-settext-el';
+  const el = getOrCreateElement(testId);
+  sandbox.setText(testId, 'Hello World');
+  assert.strictEqual(el.textContent, 'Hello World', 'setText should update textContent of existing element');
+
+  // Test 2: Edge case - element does not exist
+  // We temporarily patch getElementById to force null return for this specific test
+  const originalGetElementById = sandbox.document.getElementById;
+  sandbox.document.getElementById = (id) => id === 'non-existent-el' ? null : originalGetElementById(id);
+
+  try {
+    sandbox.setText('non-existent-el', 'This should not crash');
+    // If we reach here without crashing, the test passes
+    assert.ok(true, 'setText should not crash when element is null');
+  } finally {
+    // Restore original
+    sandbox.document.getElementById = originalGetElementById;
+  }
+});
+
+// ------------------------------------------------------------------
 // 6. Requirement 6: Preservation of Existing Systems
 // ------------------------------------------------------------------
 console.log('\n--- Requirement 6: Preservation of Existing Core Systems ---');
@@ -429,4 +456,6 @@ console.log('====================================================\n');
 
 if (failCount > 0) {
   process.exit(1);
+} else {
+  process.exit(0);
 }
