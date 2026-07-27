@@ -287,6 +287,7 @@ function computeStats() {
   const lvl = G.save.level;
   if (isMultMode) {
     cs.dmgMult *= Math.pow(1.10, lvl - 1);
+    cs.goldFind *= Math.pow(1.08, lvl - 1);
   } else {
     cs.dmgMult += (lvl - 1) * 0.10;
   }
@@ -483,6 +484,14 @@ function computeStats() {
     cs.atkSpeedOverflowMult = cs.atkSpeed / 25;
     cs.atkSpeed = 25;
   }
+
+  // Cap core stats at 1e300 so they never overflow to Infinity and trigger sanitization reset
+  cs.dmgMult = Math.min(1e300, cs.dmgMult);
+  cs.goldFind = Math.min(1e300, cs.goldFind);
+  cs.expBonus = Math.min(1e300, cs.expBonus);
+  cs.petDmg = Math.min(1e300, cs.petDmg);
+  cs.clickDmg = Math.min(1e300, cs.clickDmg);
+  cs.bossDmg = Math.min(1e300, cs.bossDmg);
 
   // Final NaN sanitization — if any stat is NaN/Infinity, reset to safe defaults
   for (const key of Object.keys(cs)) {
