@@ -193,10 +193,13 @@
 <!-- ═══════════════════════════════════════════════════════
      SCRIPTS (PERMANENT AUTO CACHE BUSTER)
 ═══════════════════════════════════════════════════════ -->
-<script src="js/eternitynum_v3.js?v=7"></script>
-<script src="js/data_v3.js?v=7"></script>
-<script src="js/game_v3.js?v=7"></script>
-<script src="js/ui_v3.js?v=7"></script>
+<script>
+  // Permanent Auto Cache Buster: Appends current timestamp so browser is 100% forced to execute the freshest code!
+  const ts = Date.now();
+  ['js/eternitynum_v3.js', 'js/data_v3.js', 'js/game_v3.js', 'js/ui_v3.js'].forEach(src => {
+    document.write(`<script src="${src}?t=${ts}"><\/script>`);
+  });
+</script>
 
 <script>
 window.addEventListener('DOMContentLoaded', () => {
