@@ -256,6 +256,11 @@ function computeStats() {
     startZone:    0,
     keepUpgrades: 0,
     petSlots:     G.save.petSlots || 3,
+
+    // New multiplier stats
+    finalDmgMult:  1,
+    finalPetMult:  1,
+    finalGoldMult: 1,
   };
 
   // Level bonus
@@ -270,8 +275,14 @@ function computeStats() {
       if (!af) continue;
       const statKey = af.stat;
       const tierVal = safeNum(af.tierVal, 0); // Guard against NaN affixes
+      const poolAf = (GAME_DATA.AFFIXES[item.slotId] || []).find(a => a.id === af.id);
+
       if (statKey in cs) {
-        cs[statKey] += tierVal;
+        if (poolAf && poolAf.type === 'mult') {
+          cs[statKey] *= tierVal;
+        } else {
+          cs[statKey] += tierVal;
+        }
       }
     }
   }
@@ -360,6 +371,11 @@ function computeStats() {
   if (dLvls.pet_reserve > 1) cs.petDmg *= (1 + (dLvls.pet_reserve - 1) * 0.10);
   if (dLvls.essence_shrine > 1) cs.dropRate *= (1 + (dLvls.essence_shrine - 1) * 0.05);
   if (dLvls.relic_spire > 1) cs.dmgMult *= (1 + (dLvls.relic_spire - 1) * 0.08);
+
+  // Apply final multipliers to core stats
+  cs.dmgMult  *= cs.finalDmgMult;
+  cs.petDmg   *= cs.finalPetMult;
+  cs.goldFind *= cs.finalGoldMult;
 
   // Caps (CRIT CHANCE CAP REMOVED FOR WARFRAME MULTI-CRIT!)
   cs.dodgeChance  = Math.min(cs.dodgeChance, 0.75);
@@ -998,7 +1014,10 @@ function useSkill(slot) {
 }
 
 function getSummonCost(count = 1) {
-  const pulls = (count === 10 ? 9 : count);
+  let pulls = count;
+  if (count === 10) pulls = 9;
+  if (count === 100) pulls = 85; // 15 free pulls for 100x
+
   const stage = G.save.currentStage || 1;
   const basePerPull = EN.mul(EN.fromNumber(5000), EN.pow(EN.fromNumber(1.10), EN.fromNumber(stage)));
   return EN.mul(basePerPull, EN.fromNumber(pulls));
@@ -1015,8 +1034,21 @@ function summon(bannerId, count = 1) {
   for (let i = 0; i < count; i++) {
     G.save.gachaPity[bannerId]++;
     const pity = G.save.gachaPity[bannerId];
-    let rarityId = pity >= 100 ? 'legendary' : (pity >= 50 ? 'epic' : GAME_DATA.rollRarity(pity >= 40 ? 2 : 1));
-    if (pity >= 100 || (pity >= 50 && rarityId === 'epic')) G.save.gachaPity[bannerId] = 0;
+    let rarityId = GAME_DATA.rollRarity(pity >= 40 ? 2 : 1);
+
+    const rolledIdx = GAME_DATA.RARITY_INDEX[rarityId] || 0;
+
+    if (pity >= 100) {
+      if (rolledIdx < GAME_DATA.RARITY_INDEX['legendary']) rarityId = 'legendary';
+      G.save.gachaPity[bannerId] = 0;
+    } else if (pity === 50) {
+      if (rolledIdx < GAME_DATA.RARITY_INDEX['epic']) rarityId = 'epic';
+    }
+
+    const finalIdx = GAME_DATA.RARITY_INDEX[rarityId] || 0;
+    if (finalIdx >= GAME_DATA.RARITY_INDEX['legendary']) {
+      G.save.gachaPity[bannerId] = 0;
+    }
 
     if (bannerId === 'pet') {
       const pool = GAME_DATA.PETS.filter(p => p.rarity === rarityId);

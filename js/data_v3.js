@@ -49,6 +49,7 @@ const EQUIP_SLOTS = [
 // ══════════════════════════════════════════════════════════════════
 const AFFIXES = {
   weapon: [
+    { id: 'w_finaldmg',   name: 'Obliteration',      tiers: [2, 5, 10, 25, 100],      type: 'mult', stat: 'finalDmgMult',  desc: '×{v} Final Damage Multiplier' },
     { id: 'w_flatdmg',    name: 'Razor Edge',        tiers: [1.5, 3, 6, 12, 25],      type: 'pct',  stat: 'dmgMult',       desc: '+{v}% Base Damage' },
     { id: 'w_fire',       name: 'Flame Blessing',     tiers: [0.08,0.15,0.25,0.40,0.6],type: 'pct',  stat: 'fireDmg',       desc: '+{v}% Fire Damage' },
     { id: 'w_ice',        name: 'Frostbite',          tiers: [0.08,0.15,0.25,0.40,0.6],type: 'pct',  stat: 'iceDmg',        desc: '+{v}% Ice Damage' },
@@ -116,6 +117,7 @@ const AFFIXES = {
     { id: 'r_goldmult',  name: 'Midas Touch',         tiers: [0.08,0.15,0.25,0.40,0.60],type:'pct', stat: 'goldFind',       desc: '+{v}% Gold' },
   ],
   amulet: [
+    { id: 'a_finalpet',  name: 'Beast Core',          tiers: [2, 5, 10, 25, 50],      type: 'mult', stat: 'finalPetMult',   desc: '×{v} Final Pet Dmg Multiplier' },
     { id: 'a_petaura',   name: 'Beast Lord\'s Chain', tiers: [0.12,0.22,0.36,0.55,0.80],type:'pct', stat: 'petDmg',         desc: '+{v}% Pet Damage' },
     { id: 'a_skillpow',  name: 'Arcane Talisman',     tiers: [0.10,0.20,0.35,0.55,0.80],type:'pct', stat: 'skillDmg',       desc: '+{v}% Active Skill Power' },
     { id: 'a_prestige',  name: 'Ascension Pendant',   tiers: [0.05,0.10,0.18,0.28,0.40],type:'pct', stat: 'prestigeMult',   desc: '+{v}% Prestige Multiplier' },
