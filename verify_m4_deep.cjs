@@ -395,6 +395,18 @@ test('Warframe Multi-Layer Criticals & No 100% Crit Cap', () => {
   assert(highCritFound, 'Warframe multi-layer crits (tier >= 2) must trigger with high crit chance');
 });
 
+test('safeNum edge cases verification', () => {
+  const safeNum = sandbox.safeNum;
+  assert.strictEqual(safeNum(null, 5), 5, 'safeNum handles null');
+  assert.strictEqual(safeNum(undefined, 5), 5, 'safeNum handles undefined');
+  assert.strictEqual(safeNum(NaN, 5), 5, 'safeNum handles NaN');
+  assert.strictEqual(safeNum(Infinity, 5), 5, 'safeNum handles Infinity');
+  assert.strictEqual(safeNum(-Infinity, 5), 5, 'safeNum handles -Infinity');
+  assert.strictEqual(safeNum("10", 5), 10, 'safeNum handles string numbers');
+  assert.strictEqual(safeNum("abc", 5), 5, 'safeNum handles invalid strings');
+  assert.strictEqual(safeNum(10, 5), 10, 'safeNum handles valid numbers');
+});
+
 test('_killLock re-entry guard and safeEN helper integrity', () => {
   const safeEN = sandbox.safeEN;
   assert.strictEqual(EN.toNumber(safeEN(NaN, EN.fromNumber(5))), 5, 'safeEN handles NaN correctly');
