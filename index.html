@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eternity Idle RPG — Deep Incremental Odyssey</title>
+  <meta name="description" content="Deep idle RPG with equipment affixes, active pets, gacha summons, dungeons, relics, and EternityNum big numbers." />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <script>
+    // Permanent Auto Cache Buster: Appends current timestamp to CSS so browser can NEVER cache old styles!
+    document.write(`<link rel="stylesheet" href="css/style.css?t=${Date.now()}" />`);
+  </script>
+</head>
+<body>
+
+<div class="game-wrapper">
+
+  <!-- ═══════════════════════════════════════════════════════
+       HEADER / HUD
+  ═══════════════════════════════════════════════════════ -->
+  <header class="game-header">
+    <div class="header-top">
+      <h1 class="game-title">⚔️ Eternity Idle RPG</h1>
+      <div class="hud-stats">
+        <div class="hud-stat" id="hud-level">⭐ Lv.1</div>
+        <div class="hud-stat" id="hud-gold">💰 0</div>
+        <div class="hud-stat" id="hud-gems">💎 50</div>
+        <div class="hud-stat" id="hud-dps">⚔️ DPS: 0</div>
+        <div class="hud-stat" id="hud-zone">🗺️ Verdant Forest</div>
+        <div class="hud-stat" id="hud-kills">💀 0 kills</div>
+      </div>
+      <div class="header-actions">
+        <button class="btn-save" id="save-btn">💾 Save</button>
+        <button class="btn-save" onclick="const str = G.exportSave(); if(str){ navigator.clipboard.writeText(str); showToast('📋 Save Copied to Clipboard!', 'success'); } else { showToast('Nothing to export!', 'error'); }">📋 Export</button>
+        <button class="btn-save" onclick="const str = prompt('Paste your exported save code here:'); if(str && G.importSave(str)){ showToast('✅ Save Imported Successfully!', 'success'); } else if(str){ showToast('❌ Invalid Save Data!', 'error'); }">📥 Import</button>
+        <button class="btn-reset" id="reset-btn">🗑️ Reset</button>
+      </div>
+    </div>
+    <div class="exp-bar-container">
+      <div class="exp-bar-fill" id="exp-bar-fill" style="width:0%"></div>
+    </div>
+    <div class="exp-text" id="exp-text">0 / 10 EXP</div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MAIN 3-COLUMN LAYOUT
+  ═══════════════════════════════════════════════════════ -->
+  <main class="game-main">
+
+    <!-- ── LEFT: 8 Equipment Slots + Auto-Sell ─────────── -->
+    <section class="panel" aria-label="Equipment">
+      <div class="panel-header">
+        <h3>🛡️ Equipment (8 Slots)</h3>
+      </div>
+      <div id="equipment-slots">
+        <!-- Rendered by ui.js -->
+      </div>
+    </section>
+
+    <!-- ── CENTER: Arena, Skill Bar, Bottom Tabs ────────── -->
+    <section class="battle-center">
+
+      <!-- Battle Arena -->
+      <div class="battle-arena" id="battle-arena" title="Click to Attack!">
+        <div class="enemy-card" id="enemy-card">
+          <span class="enemy-icon-display" id="enemy-icon">👹</span>
+          <div class="enemy-name-display" id="enemy-name">Loading...</div>
+          <div class="enemy-hp-container">
+            <div class="enemy-hp-bar" id="enemy-hp-bar" style="width:100%"></div>
+          </div>
+          <div class="enemy-hp-text" id="enemy-hp-text">...</div>
+        </div>
+        <div class="click-hint">⚔️ Click enemy to attack! Unlock Auto Battle in Upgrades.</div>
+      </div>
+
+      <!-- Skill Bar (4 slots) -->
+      <div class="skill-bar" id="skill-bar-display">
+        <div class="skill-slot-btn empty" data-skill-slot="0" onclick="UI.useActiveSkill(0)">
+          <div class="sk-empty">Skill 1<br><small>Empty</small></div>
+        </div>
+        <div class="skill-slot-btn empty" data-skill-slot="1" onclick="UI.useActiveSkill(1)">
+          <div class="sk-empty">Skill 2<br><small>Empty</small></div>
+        </div>
+        <div class="skill-slot-btn empty" data-skill-slot="2" onclick="UI.useActiveSkill(2)">
+          <div class="sk-empty">Skill 3<br><small>Empty</small></div>
+        </div>
+        <div class="skill-slot-btn empty" data-skill-slot="3" onclick="UI.useActiveSkill(3)">
+          <div class="sk-empty">Skill 4<br><small>Empty</small></div>
+        </div>
+      </div>
+
+      <!-- Stage & Auto-Advance Control -->
+      <div class="battle-footer">
+        <div class="stage-row">
+          <div class="stage-number-badge" id="stage-number-label">STAGE 1</div>
+
+          <!-- Kill Progress Tracker (Regular Monsters) -->
+          <div class="tracker-container" id="monsters-tracker-container">
+            <div class="monsters-text" id="monsters-progress-text">Monsters: 0 / 10</div>
+            <div class="zone-progress-bar" id="stage-progress-bar">
+              <div class="zone-progress-fill" id="zone-progress-fill" style="width:0%"></div>
+            </div>
+          </div>
+
+          <!-- Boss Fight Indicator & 45s Timer Bar (Boss Stage) -->
+          <div class="tracker-container boss-container" id="boss-timer-container" style="display:none;">
+            <div class="boss-indicator-text" id="boss-timer-text">⚔️ BOSS FIGHT — 45.0s remaining</div>
+            <div class="boss-timer-bar" id="boss-timer-bar">
+              <div class="boss-timer-fill" id="boss-timer-fill" style="width:100%"></div>
+            </div>
+          </div>
+
+          <!-- Auto-Advance Toggle Button -->
+          <button type="button" class="btn-toggle-auto active" id="auto-advance-btn" onclick="UI.toggleAutoAdvance()">
+            🚀 Auto-Advance: ON
+          </button>
+        </div>
+        <div class="zone-bonus-display" id="zone-bonus-display"></div>
+      </div>
+
+      <!-- Bottom Navigation Tabs -->
+      <nav class="bottom-tabs-nav" aria-label="Game Panels">
+        <button class="main-tab-btn active" data-tab="upgrades">⬆️ Upgrades</button>
+        <button class="main-tab-btn" data-tab="pets">🐾 Pets</button>
+        <button class="main-tab-btn" data-tab="skills">✨ Skills</button>
+        <button class="main-tab-btn" data-tab="summon">🎰 Summon</button>
+        <button class="main-tab-btn" data-tab="dungeons">🏰 Dungeons</button>
+        <button class="main-tab-btn" data-tab="relics">🏛️ Relics</button>
+        <button class="main-tab-btn" data-tab="prestige">🌟 Prestige</button>
+        <button class="main-tab-btn" data-tab="stats">📊 Stats</button>
+        <button class="main-tab-btn" data-tab="log">📜 Log</button>
+      </nav>
+
+      <!-- Tab Panels Container -->
+      <div class="tab-panels-area">
+
+        <div class="tab-panel active" id="upgrades-panel"></div>
+        <div class="tab-panel" id="pets-panel"></div>
+        <div class="tab-panel" id="skills-panel"></div>
+        <div class="tab-panel" id="summon-panel"></div>
+        <div class="tab-panel" id="dungeons-panel"></div>
+        <div class="tab-panel" id="relics-panel"></div>
+        <div class="tab-panel" id="prestige-panel"></div>
+        <div class="tab-panel" id="stats-panel"></div>
+        <div class="tab-panel" id="log-panel">
+          <div id="combat-log"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── RIGHT: Active Pets, Materials, Recent Log ──── -->
+    <section class="right-panel" aria-label="Side Info">
+      <div class="panel-header">
+        <h3>🐾 Active Pets</h3>
+      </div>
+      <div id="active-pets-mini"></div>
+
+      <div class="panel-header">
+        <h3>🧰 Materials</h3>
+      </div>
+      <div id="materials-display"></div>
+
+      <div class="panel-header">
+        <h3>📜 Combat Log</h3>
+      </div>
+      <div id="mini-log"></div>
+    </section>
+
+  </main>
+
+</div><!-- /game-wrapper -->
+
+<!-- ═══════════════════════════════════════════════════════
+     MODALS
+═══════════════════════════════════════════════════════ -->
+
+<div class="modal-overlay" id="equip-modal" role="dialog" aria-label="Equipment Slot">
+  <div class="modal-content"></div>
+</div>
+
+<div class="modal-overlay" id="reroll-modal" role="dialog" aria-label="Reroll Affixes">
+  <div class="modal-content"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     TOAST NOTIFICATIONS
+═══════════════════════════════════════════════════════ -->
+<div id="toast-container" aria-live="polite"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCRIPTS (PERMANENT AUTO CACHE BUSTER)
+═══════════════════════════════════════════════════════ -->
+<script>
+  // Dynamically load game scripts with fresh timestamps so you NEVER need to manually bump versions or clear browser cache again!
+  const ts = Date.now();
+  ['js/eternitynum_v3.js', 'js/data_v3.js', 'js/game_v3.js', 'js/ui_v3.js'].forEach(src => {
+    document.write(`<script src="${src}?t=${ts}"><\/script>`);
+  });
+</script>
+
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  initGame();
+  UI.init();
+  UI.renderAll();
+
+  setTimeout(() => showToast('⚔️ Welcome to Eternity Idle RPG! Click the enemy to fight!', 'success'), 400);
+  setTimeout(() => showToast('💡 Buy "Auto Battle I" in Upgrades → Combat to enable auto-attack!', 'info'), 3000);
+});
+</script>
+
+</body>
+</html>
