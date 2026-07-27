@@ -414,6 +414,33 @@ test('_killLock re-entry guard and safeEN helper integrity', () => {
 // ------------------------------------------------------------------
 console.log('\n--- Requirement 7: Integrity & Anti-Cheating Audit ---');
 
+test('saveGame catches and logs localStorage errors', () => {
+  const originalSetItem = sandbox.localStorage.setItem;
+  const originalConsoleError = sandbox.console.error;
+
+  let errorLogged = false;
+  sandbox.console.error = (msg, err) => {
+    if (msg === 'Save failed') {
+      errorLogged = true;
+    }
+  };
+
+  sandbox.localStorage.setItem = () => {
+    throw new Error('QuotaExceededError');
+  };
+
+  try {
+    // This should not throw an exception, but should log 'Save failed'
+    sandbox.saveGame();
+
+    assert.strictEqual(errorLogged, true, 'saveGame must catch and log localStorage errors');
+  } finally {
+    // Restore
+    sandbox.localStorage.setItem = originalSetItem;
+    sandbox.console.error = originalConsoleError;
+  }
+});
+
 test('Check code files for hardcoded test outputs or facade implementations', () => {
   const codeFiles = ['js/game_v3.js', 'js/ui_v3.js', 'js/data_v3.js'];
   for (const file of codeFiles) {
