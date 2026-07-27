@@ -11,6 +11,8 @@ let selectedItem   = null;
 let currentBanner  = 'pet';
 let lockedAffixes  = new Set();
 
+let globalPetLookup = null;
+
 // ══════════════════════════════════════════════════════════════════
 // BOOT
 // ══════════════════════════════════════════════════════════════════
@@ -244,13 +246,18 @@ UI.renderEquipment = function() {
         </div>
         <div class="item-name">${item.name}</div>
         <div class="item-affixes">
-          ${(item.affixes || []).slice(0, 3).map(af => `
-            <div class="affix-line" title="${af.desc.replace('{v}', (af.tierVal * 100).toFixed(1) + '%')}">
+          ${(item.affixes || []).slice(0, 3).map(af => {
+            const poolAf = (GAME_DATA.AFFIXES[slot.id] || []).find(a => a.id === af.id);
+            const isMult = poolAf && poolAf.type === 'mult';
+            const displayVal = isMult ? `×${af.tierVal.toFixed(1)}` : `+${(af.tierVal * 100).toFixed(1)}%`;
+            const descRep = isMult ? af.desc.replace('{v}', af.tierVal.toFixed(1)) : af.desc.replace('{v}', (af.tierVal * 100).toFixed(1) + '%');
+            return `
+            <div class="affix-line" title="${descRep}">
               <span class="affix-tier tier-${af.tier}">${'★'.repeat(af.tier + 1)}</span>
               <span class="affix-name">${af.name}</span>
-              <span class="affix-val">+${(af.tierVal * 100).toFixed(1)}%</span>
+              <span class="affix-val">${displayVal}</span>
             </div>
-          `).join('')}
+          `}).join('')}
           ${item.affixes.length > 3 ? `<div class="affix-more">+${item.affixes.length - 3} more...</div>` : ''}
         </div>
       `;
@@ -362,12 +369,17 @@ UI.renderRerollPanel = function(item) {
     const locked = lockedAffixes.has(i);
     const tierNames  = ['Basic','Enhanced','Superior','Perfect','Transcendent'];
     const tierColors = ['#9e9e9e','#4caf50','#2196f3','#9c27b0','#ff9800'];
+
+    const poolAf = (GAME_DATA.AFFIXES[item.slotId] || []).find(a => a.id === af.id);
+    const isMult = poolAf && poolAf.type === 'mult';
+    const displayVal = isMult ? `×${af.tierVal.toFixed(2)}` : `+${(af.tierVal * 100).toFixed(2)}%`;
+
     html += `<div class="reroll-affix ${locked ? 'locked' : ''}">
       <button class="lock-btn ${locked ? 'active' : ''}" onclick="UI.toggleAffix(${i})">🔒</button>
       <div class="af-info">
         <span class="af-tier" style="color:${tierColors[af.tier]}">${tierNames[af.tier]}</span>
         <span class="af-name">${af.name}</span>
-        <span class="af-value">+${(af.tierVal * 100).toFixed(2)}%</span>
+        <span class="af-value">${displayVal}</span>
       </div>
       <button class="af-upgrade-btn" onclick="UI.upgradeAffix(${i})" title="Upgrade tier (${mats.tierStones} tier stones)">⬆️</button>
     </div>`;
@@ -512,13 +524,16 @@ UI.renderPets = function() {
   const el = document.getElementById('pets-panel');
   if (!el) return;
 
+  if (!globalPetLookup && typeof GAME_DATA !== 'undefined' && GAME_DATA.PETS) globalPetLookup = new Map(GAME_DATA.PETS.map(p => [p.id, p]));
+  const ownedPetLookup = new Map(G.save.petCollection.map(p => [p.petId, p]));
+
   let html = `<div class="panel-header"><h3>🐾 Active Pets (${G.save.petSlots} slots)</h3></div>
   <div class="active-pets-row">`;
 
   for (let i = 0; i < G.save.petSlots; i++) {
     const pid   = G.save.activePets[i];
-    const pet   = pid ? GAME_DATA.PETS.find(p => p.id === pid) : null;
-    const owned = pid ? G.save.petCollection.find(p => p.petId === pid) : null;
+    const pet   = pid && globalPetLookup ? globalPetLookup.get(pid) : null;
+    const owned = pid ? ownedPetLookup.get(pid) : null;
     const rar   = pet ? GAME_DATA.getRarityById(pet.rarity) : null;
     html += `<div class="pet-slot ${pet ? 'active' : 'empty'}" style="${rar ? 'border-color:'+rar.color+';box-shadow:'+rar.glow : ''}">
       ${pet ? `
@@ -540,7 +555,7 @@ UI.renderPets = function() {
   }
 
   for (const owned of G.save.petCollection) {
-    const pet = GAME_DATA.PETS.find(p => p.id === owned.petId);
+    const pet = globalPetLookup ? globalPetLookup.get(owned.petId) : null;
     if (!pet) continue;
     const rar = GAME_DATA.getRarityById(pet.rarity);
     const evolveable = owned.level >= 50 && !owned.evolved && G.save.materials.petEssence >= 100;
@@ -718,18 +733,22 @@ UI.renderSummon = function() {
   if (!el) return;
 
   const rarityRates = [
-    { name:'Common',    rate:'60%',  color:'#9e9e9e' },
-    { name:'Uncommon',  rate:'25%',  color:'#4caf50' },
-    { name:'Rare',      rate:'10%',  color:'#2196f3' },
-    { name:'Epic',      rate:'4%',   color:'#9c27b0' },
-    { name:'Legendary', rate:'0.8%', color:'#ff9800' },
+    { name:'Common',    rate:'60%',    color:'#9e9e9e' },
+    { name:'Uncommon',  rate:'25%',    color:'#4caf50' },
+    { name:'Rare',      rate:'10%',    color:'#2196f3' },
+    { name:'Epic',      rate:'4%',     color:'#9c27b0' },
+    { name:'Legendary', rate:'0.8%',   color:'#ff9800' },
+    { name:'Mythic',    rate:'0.2%',   color:'#f44336' },
+    { name:'Cosmic+',   rate:'0.01%',  color:'#00bcd4' },
   ];
 
   const animOn = G.save.showSummonAnim !== false;
-  const cost1  = G.getSummonCost ? G.getSummonCost(1) : EN.fromNumber(5000);
-  const cost10 = G.getSummonCost ? G.getSummonCost(10) : EN.fromNumber(45000);
-  const canAfford1  = EN.meeq(G.save.gold, cost1);
-  const canAfford10 = EN.meeq(G.save.gold, cost10);
+  const cost1   = G.getSummonCost ? G.getSummonCost(1) : EN.fromNumber(5000);
+  const cost10  = G.getSummonCost ? G.getSummonCost(10) : EN.fromNumber(45000);
+  const cost100 = G.getSummonCost ? G.getSummonCost(100) : EN.fromNumber(425000);
+  const canAfford1   = EN.meeq(G.save.gold, cost1);
+  const canAfford10  = EN.meeq(G.save.gold, cost10);
+  const canAfford100 = EN.meeq(G.save.gold, cost100);
 
   let html = `<div class="panel-header">
     <h3>🎰 Gacha Summon</h3>
@@ -759,12 +778,15 @@ UI.renderSummon = function() {
       ${rarityRates.map(r => `<div class="rate-row"><span style="color:${r.color}">${r.name}</span><span>${r.rate}</span></div>`).join('')}
     </div>
   </div>
-  <div class="summon-buttons">
-    <button onclick="UI.doSummon('${currentBanner}',1)" class="btn-summon-1" ${!canAfford1 ? 'disabled':''}>
+  <div class="summon-buttons" style="display:flex; gap:10px; flex-wrap:wrap;">
+    <button onclick="UI.doSummon('${currentBanner}',1)" class="btn-summon-1" ${!canAfford1 ? 'disabled':''} style="flex:1;">
       × 1 Pull<br><small>💰 ${EN.fmt(cost1)}</small>
     </button>
-    <button onclick="UI.doSummon('${currentBanner}',10)" class="btn-summon-10" ${!canAfford10 ? 'disabled':''}>
+    <button onclick="UI.doSummon('${currentBanner}',10)" class="btn-summon-10" ${!canAfford10 ? 'disabled':''} style="flex:1;">
       × 10 Pull<br><small>💰 ${EN.fmt(cost10)} (1 free!)</small>
+    </button>
+    <button onclick="UI.doSummon('${currentBanner}',100)" class="btn-summon-100" ${!canAfford100 ? 'disabled':''} style="flex:1; background:linear-gradient(90deg, #9333ea, #db2777); color:white; font-weight:bold; border:none; border-radius:8px; padding:10px; cursor:pointer;">
+      × 100 Pull<br><small>💰 ${EN.fmt(cost100)} (15 free!)</small>
     </button>
   </div>
   <div id="summon-result-area"></div>`;
@@ -781,7 +803,8 @@ UI.doSummon = function(bannerId, count) {
   UI.renderSummon();
   UI.renderPets();
   UI.renderSkills();
-  UI.renderHeader();
+  if (typeof UI.renderHeader === 'function') UI.renderHeader();
+  else if (typeof UI.renderHUD === 'function') UI.renderHUD();
   UI.renderRightPanel();
 };
 
@@ -814,9 +837,19 @@ UI.showSummonResult = function({ bannerId, results }) {
       icon = r.item ? r.item.icon : '⚔️';
     }
 
-    const delay = useAnim ? `style="animation-delay:${idx * 0.08}s"` : '';
-    const isHigh = ['epic','legendary','mythic','divine','eternal','transcendent','infinite','absolute','primordial'].includes(r.rarity);
-    html += `<div class="summon-result-card ${useAnim ? 'summon-reveal' : ''} ${isHigh ? 'high-rarity' : ''}" style="border-color:${rar.color};${useAnim ? `animation-delay:${idx * 0.10}s` : ''}">
+    const isHigh = ['epic','legendary','mythic','cosmic','divine','eternal'].includes(r.rarity);
+    const isSuperHigh = ['mythic','cosmic','divine','eternal'].includes(r.rarity);
+
+    // Create shaking effect if it's super high rarity
+    const shakeClass = isSuperHigh && useAnim ? 'shake-animation' : '';
+
+    // Scale animation delay for large pulls so it doesn't take forever
+    let animDelay = idx * 0.10;
+    if (results.length > 20) {
+      animDelay = idx * 0.03;
+    }
+
+    html += `<div class="summon-result-card ${useAnim ? 'summon-reveal' : ''} ${isHigh ? 'high-rarity' : ''} ${shakeClass}" style="border-color:${rar.color};${useAnim ? `animation-delay:${animDelay}s` : ''}">
       <div class="src-face">
         <div class="src-icon">${icon}</div>
         <div class="src-name">${name}</div>
