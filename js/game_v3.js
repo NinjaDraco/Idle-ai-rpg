@@ -383,7 +383,28 @@ function computeStats() {
   if (dLvls.relic_spire > 1) cs.dmgMult *= (1 + (dLvls.relic_spire - 1) * 0.08);
 
   // Apply final multipliers to core stats
-  cs.dmgMult  *= cs.finalDmgMult;
+  let totalStars = 0;
+  if (Array.isArray(G.save.petCollection)) {
+    for (const p of G.save.petCollection) {
+      totalStars += p.starCount || p.duplicates || p.constellation || 0;
+    }
+  }
+  if (Array.isArray(G.save.skillCollection)) {
+    for (const s of G.save.skillCollection) {
+      totalStars += s.starCount || s.constellation || 0;
+    }
+  }
+  if (G.save.equipped) {
+    for (const key in G.save.equipped) {
+      const item = G.save.equipped[key];
+      if (item) {
+        totalStars += item.starCount || 0;
+      }
+    }
+  }
+  // Exponential scaling booster: 1.5^stars up to 1e300 to boost DPS to the sky!
+  const starDpsMult = Math.min(1e300, Math.pow(1.5, totalStars));
+  cs.dmgMult  *= cs.finalDmgMult * starDpsMult;
   cs.petDmg   *= cs.finalPetMult;
   cs.goldFind *= cs.finalGoldMult;
 
@@ -694,15 +715,25 @@ function killEnemy() {
 
 function checkLevelUp() {
   const cap = G.computedStats.levelCap || 999999;
-  // Loop until EXP is fully consumed — allows multiple level-ups per kill!
-  let loops = 0;
-  while (G.save.level < cap && loops++ < 100) {
-    const expNeeded = EN.mul(EN.fromNumber(10), EN.pow(EN.fromNumber(G.save.level), EN.fromNumber(1.8)));
-    if (!EN.meeq(G.save.exp, expNeeded)) break;
-    G.save.exp   = EN.sub(G.save.exp, expNeeded);
-    G.save.level += 1;
+  let leveled = false;
+  let startLevel = G.save.level;
+  let currentLevel = G.save.level;
+  let currentExp = G.save.exp;
+  
+  while (currentLevel < cap) {
+    const expNeeded = EN.mul(EN.fromNumber(10), EN.pow(EN.fromNumber(currentLevel), EN.fromNumber(1.8)));
+    if (EN.lt(currentExp, expNeeded)) break;
+    currentExp = EN.sub(currentExp, expNeeded);
+    currentLevel++;
+    leveled = true;
+  }
+  
+  if (leveled) {
+    G.save.exp = currentExp;
+    G.save.level = currentLevel;
     G.computedStats = computeStats();
-    addLog(`🎉 Level Up! Level ${G.save.level}`, 'level');
+    G.baseDmg = getBaseDmg();
+    addLog(`🎉 Bulk Level Up! Gained ${currentLevel - startLevel} levels! Now Level ${G.save.level}`, 'level');
     G.events.emit('levelup', G.save.level);
   }
 }
