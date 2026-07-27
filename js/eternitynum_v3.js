@@ -429,10 +429,16 @@ const THIRD_ONES  = ['', 'Ce', 'Dce', 'Tce', 'Qace', 'Qice', 'Sxce', 'Spce', 'Oc
 const MULT_ONES   = ['', 'Mi', 'Bi', 'Tri', 'Quad', 'Quint', 'Hex', 'Hep', 'Oct', 'Non'];
 
 function CutDigits(n, digits) {
-  if (digits < 0) return n.toString();
-  if (!isFinite(n)) return n.toString();
-  return parseFloat(n.toFixed(digits)).toString();
+  if (typeof n !== 'number') return String(n);
+  let s = n.toFixed(digits);
+  // Strip trailing zeros if decimal point exists
+  if (s.indexOf('.') !== -1) {
+    s = s.replace(/0+$/, '').replace(/\.$/, '');
+  }
+  return s;
 }
+
+EN.CutDigits = CutDigits;
 
 EN.toSuffix = function(v, digits) {
   v = EN.convert(v);

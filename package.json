@@ -6,9 +6,24 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest"
   },
   "devDependencies": {
-    "vite": "^5.3.0"
-  }
+    "vite": "^5.3.0",
+    "vitest": "^4.1.10"
+  },
+  "description": "",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NinjaDraco/Idle-ai-rpg.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/NinjaDraco/Idle-ai-rpg/issues"
+  },
+  "homepage": "https://github.com/NinjaDraco/Idle-ai-rpg#readme"
 }
