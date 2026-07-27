@@ -410,6 +410,31 @@ test('_killLock re-entry guard and safeEN helper integrity', () => {
 });
 
 // ------------------------------------------------------------------
+// addLog verification test
+// ------------------------------------------------------------------
+console.log('\n--- addLog Testing Coverage ---');
+test('addLog correctly adds logs and truncates to 50 max logs', () => {
+  G.save.combatLog = undefined; // Uninitialized
+  G.addLog('First log'); // Call via G where it is attached in initGame
+  assert.strictEqual(G.save.combatLog.length, 1, 'combatLog should be initialized and contain 1 log');
+  assert.strictEqual(G.save.combatLog[0].text, 'First log', 'Log message should match');
+  assert.strictEqual(G.save.combatLog[0].type, 'info', 'Default type should be info');
+  assert.ok(G.save.combatLog[0].time, 'Time should be set');
+
+  G.addLog('Second log', 'boss');
+  assert.strictEqual(G.save.combatLog[0].text, 'Second log', 'New log should be unshifted');
+  assert.strictEqual(G.save.combatLog[0].type, 'boss', 'Type should match provided type');
+
+  // Add more than 50 logs
+  for (let i = 0; i < 60; i++) {
+    G.addLog(`Spam log ${i}`);
+  }
+
+  assert.strictEqual(G.save.combatLog.length, 50, 'combatLog should be truncated to 50 logs');
+  assert.strictEqual(G.save.combatLog[0].text, 'Spam log 59', 'Most recent log is at index 0');
+});
+
+// ------------------------------------------------------------------
 // 7. Integrity & Anti-Cheating Verification
 // ------------------------------------------------------------------
 console.log('\n--- Requirement 7: Integrity & Anti-Cheating Audit ---');
@@ -429,4 +454,6 @@ console.log('====================================================\n');
 
 if (failCount > 0) {
   process.exit(1);
+} else {
+  process.exit(0);
 }
