@@ -337,6 +337,33 @@ test('UI renders STAGE X header, Monsters tracker during regular, Boss timer dur
 });
 
 // ------------------------------------------------------------------
+// 5.5. Testing Improvement: UI Utility functions (setText)
+// ------------------------------------------------------------------
+console.log('\n--- Testing Improvement: UI Utility functions (setText) ---');
+
+test('setText properly updates textContent and safely handles null elements', () => {
+  // Test 1: Happy path - element exists
+  const testId = 'test-settext-el';
+  const el = getOrCreateElement(testId);
+  sandbox.setText(testId, 'Hello World');
+  assert.strictEqual(el.textContent, 'Hello World', 'setText should update textContent of existing element');
+
+  // Test 2: Edge case - element does not exist
+  // We temporarily patch getElementById to force null return for this specific test
+  const originalGetElementById = sandbox.document.getElementById;
+  sandbox.document.getElementById = (id) => id === 'non-existent-el' ? null : originalGetElementById(id);
+
+  try {
+    sandbox.setText('non-existent-el', 'This should not crash');
+    // If we reach here without crashing, the test passes
+    assert.ok(true, 'setText should not crash when element is null');
+  } finally {
+    // Restore original
+    sandbox.document.getElementById = originalGetElementById;
+  }
+});
+
+// ------------------------------------------------------------------
 // 6. Requirement 6: Preservation of Existing Systems
 // ------------------------------------------------------------------
 console.log('\n--- Requirement 6: Preservation of Existing Core Systems ---');
@@ -395,6 +422,18 @@ test('Warframe Multi-Layer Criticals & No 100% Crit Cap', () => {
   assert(highCritFound, 'Warframe multi-layer crits (tier >= 2) must trigger with high crit chance');
 });
 
+test('safeNum edge cases verification', () => {
+  const safeNum = sandbox.safeNum;
+  assert.strictEqual(safeNum(null, 5), 5, 'safeNum handles null');
+  assert.strictEqual(safeNum(undefined, 5), 5, 'safeNum handles undefined');
+  assert.strictEqual(safeNum(NaN, 5), 5, 'safeNum handles NaN');
+  assert.strictEqual(safeNum(Infinity, 5), 5, 'safeNum handles Infinity');
+  assert.strictEqual(safeNum(-Infinity, 5), 5, 'safeNum handles -Infinity');
+  assert.strictEqual(safeNum("10", 5), 10, 'safeNum handles string numbers');
+  assert.strictEqual(safeNum("abc", 5), 5, 'safeNum handles invalid strings');
+  assert.strictEqual(safeNum(10, 5), 10, 'safeNum handles valid numbers');
+});
+
 test('_killLock re-entry guard and safeEN helper integrity', () => {
   const safeEN = sandbox.safeEN;
   assert.strictEqual(EN.toNumber(safeEN(NaN, EN.fromNumber(5))), 5, 'safeEN handles NaN correctly');
@@ -410,9 +449,61 @@ test('_killLock re-entry guard and safeEN helper integrity', () => {
 });
 
 // ------------------------------------------------------------------
+// addLog verification test
+// ------------------------------------------------------------------
+console.log('\n--- addLog Testing Coverage ---');
+test('addLog correctly adds logs and truncates to 50 max logs', () => {
+  G.save.combatLog = undefined; // Uninitialized
+  G.addLog('First log'); // Call via G where it is attached in initGame
+  assert.strictEqual(G.save.combatLog.length, 1, 'combatLog should be initialized and contain 1 log');
+  assert.strictEqual(G.save.combatLog[0].text, 'First log', 'Log message should match');
+  assert.strictEqual(G.save.combatLog[0].type, 'info', 'Default type should be info');
+  assert.ok(G.save.combatLog[0].time, 'Time should be set');
+
+  G.addLog('Second log', 'boss');
+  assert.strictEqual(G.save.combatLog[0].text, 'Second log', 'New log should be unshifted');
+  assert.strictEqual(G.save.combatLog[0].type, 'boss', 'Type should match provided type');
+
+  // Add more than 50 logs
+  for (let i = 0; i < 60; i++) {
+    G.addLog(`Spam log ${i}`);
+  }
+
+  assert.strictEqual(G.save.combatLog.length, 50, 'combatLog should be truncated to 50 logs');
+  assert.strictEqual(G.save.combatLog[0].text, 'Spam log 59', 'Most recent log is at index 0');
+});
+
+// ------------------------------------------------------------------
 // 7. Integrity & Anti-Cheating Verification
 // ------------------------------------------------------------------
 console.log('\n--- Requirement 7: Integrity & Anti-Cheating Audit ---');
+
+test('saveGame catches and logs localStorage errors', () => {
+  const originalSetItem = sandbox.localStorage.setItem;
+  const originalConsoleError = sandbox.console.error;
+
+  let errorLogged = false;
+  sandbox.console.error = (msg, err) => {
+    if (msg === 'Save failed') {
+      errorLogged = true;
+    }
+  };
+
+  sandbox.localStorage.setItem = () => {
+    throw new Error('QuotaExceededError');
+  };
+
+  try {
+    // This should not throw an exception, but should log 'Save failed'
+    sandbox.saveGame();
+
+    assert.strictEqual(errorLogged, true, 'saveGame must catch and log localStorage errors');
+  } finally {
+    // Restore
+    sandbox.localStorage.setItem = originalSetItem;
+    sandbox.console.error = originalConsoleError;
+  }
+});
 
 test('Check code files for hardcoded test outputs or facade implementations', () => {
   const codeFiles = ['js/game_v3.js', 'js/ui_v3.js', 'js/data_v3.js'];
@@ -429,4 +520,6 @@ console.log('====================================================\n');
 
 if (failCount > 0) {
   process.exit(1);
+} else {
+  process.exit(0);
 }

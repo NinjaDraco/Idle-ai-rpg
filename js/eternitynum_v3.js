@@ -26,7 +26,7 @@ const C_GAMMA = [
 
 function F_Gamma(n) {
   if (n > 171.6236) return 1.8e308;
-  if (n > 0.5) {
+  if (n >= 0.5) {
     n -= 1;
     let x = C_GAMMA[0];
     for (let i = 1; i <= 7; i++) x += C_GAMMA[i] / (n + i);

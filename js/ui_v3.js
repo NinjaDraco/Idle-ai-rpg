@@ -11,6 +11,8 @@ let selectedItem   = null;
 let currentBanner  = 'pet';
 let lockedAffixes  = new Set();
 
+let globalPetLookup = null;
+
 // ══════════════════════════════════════════════════════════════════
 // BOOT
 // ══════════════════════════════════════════════════════════════════
@@ -522,13 +524,16 @@ UI.renderPets = function() {
   const el = document.getElementById('pets-panel');
   if (!el) return;
 
+  if (!globalPetLookup && typeof GAME_DATA !== 'undefined' && GAME_DATA.PETS) globalPetLookup = new Map(GAME_DATA.PETS.map(p => [p.id, p]));
+  const ownedPetLookup = new Map(G.save.petCollection.map(p => [p.petId, p]));
+
   let html = `<div class="panel-header"><h3>🐾 Active Pets (${G.save.petSlots} slots)</h3></div>
   <div class="active-pets-row">`;
 
   for (let i = 0; i < G.save.petSlots; i++) {
     const pid   = G.save.activePets[i];
-    const pet   = pid ? GAME_DATA.PETS.find(p => p.id === pid) : null;
-    const owned = pid ? G.save.petCollection.find(p => p.petId === pid) : null;
+    const pet   = pid && globalPetLookup ? globalPetLookup.get(pid) : null;
+    const owned = pid ? ownedPetLookup.get(pid) : null;
     const rar   = pet ? GAME_DATA.getRarityById(pet.rarity) : null;
     html += `<div class="pet-slot ${pet ? 'active' : 'empty'}" style="${rar ? 'border-color:'+rar.color+';box-shadow:'+rar.glow : ''}">
       ${pet ? `
@@ -550,7 +555,7 @@ UI.renderPets = function() {
   }
 
   for (const owned of G.save.petCollection) {
-    const pet = GAME_DATA.PETS.find(p => p.id === owned.petId);
+    const pet = globalPetLookup ? globalPetLookup.get(owned.petId) : null;
     if (!pet) continue;
     const rar = GAME_DATA.getRarityById(pet.rarity);
     const evolveable = owned.level >= 50 && !owned.evolved && G.save.materials.petEssence >= 100;
@@ -1080,33 +1085,50 @@ UI.renderCombatLog = function() {
 // FLOATING DAMAGE NUMBERS
 // ══════════════════════════════════════════════════════════════════
 UI.spawnDmgFloat = function({ text, isCrit, isClick, critTier = 0 }) {
+  // If text is an object (due to string concatenation failure with EternityNum), format it
+  if (typeof text === 'object') {
+    text = (window.ENfmt || window.EternityNum.fmt)(text);
+  } else if (text === '[object Object]') {
+    text = 'NaN'; // Fallback
+  }
+
   const arena = document.getElementById('battle-arena');
   if (!arena) return;
-  // Smart Visual Throttling: limit active floating damage texts to max 3 in the arena at once!
-  const activeFloats = arena.querySelectorAll('.dmg-float');
-  if (activeFloats.length >= 3) {
-    for (let i = 0; i <= activeFloats.length - 3; i++) {
-      activeFloats[i].remove();
-    }
-  }
-  const el  = document.createElement('div');
-  let tierClass = '';
-  if (critTier === 1) tierClass = ' crit crit-yellow';
-  else if (critTier === 2) tierClass = ' crit crit-orange';
-  else if (critTier === 3) tierClass = ' crit crit-red';
-  else if (critTier === 4) tierClass = ' crit crit-purple';
-  else if (critTier >= 5) tierClass = ' crit crit-blue';
-  else if (isCrit) tierClass = ' crit crit-yellow';
 
-  el.className = 'dmg-float' + tierClass + (isClick ? ' click' : '');
+  // Ensure recent damage container exists
+  let recent = document.getElementById('enemy-recent-dmg');
+  if (!recent) {
+    recent = document.createElement('div');
+    recent.id = 'enemy-recent-dmg';
+    recent.style.position = 'absolute';
+    recent.style.top = '10%';
+    recent.style.right = '5%';
+    recent.style.fontSize = '1.2rem';
+    recent.style.fontWeight = 'bold';
+    recent.style.color = '#fff';
+    recent.style.textAlign = 'right';
+    recent.style.textShadow = '0 2px 4px rgba(0,0,0,0.8)';
+    recent.style.pointerEvents = 'none';
+    recent.style.zIndex = '100';
+    arena.appendChild(recent);
+  }
+
+  let tierClass = '';
+  if (critTier === 1 || isCrit) tierClass = 'color: #facc15;';
+  else if (critTier === 2) tierClass = 'color: #fb923c; font-size: 1.4rem;';
+  else if (critTier === 3) tierClass = 'color: #ef4444; font-size: 1.6rem;';
+  else if (critTier === 4) tierClass = 'color: #c084fc; font-size: 1.8rem;';
+  else if (critTier >= 5) tierClass = 'color: #38bdf8; font-size: 2rem;';
+
   const prefix = critTier >= 5 ? '🌌 ' : (critTier === 4 ? '💜 ' : (critTier === 3 ? '☄️ ' : (critTier === 2 ? '🔥 ' : (isCrit ? '💥 ' : ''))));
-  el.textContent = prefix + text + (critTier > 1 ? ` (${critTier}x Crit!)` : '');
-  const x = 30 + Math.random() * 40;
-  const y = 30 + Math.random() * 30;
-  el.style.left = x + '%';
-  el.style.top  = y + '%';
-  arena.appendChild(el);
-  setTimeout(() => el.remove(), 1000);
+  const fullText = prefix + text + (critTier > 1 ? ` (${critTier}x Crit!)` : '');
+
+  recent.innerHTML = `<div style="${tierClass}">-${fullText}</div>`;
+
+  if (UI.dmgTimeout) clearTimeout(UI.dmgTimeout);
+  UI.dmgTimeout = setTimeout(() => {
+    if (recent) recent.innerHTML = '';
+  }, 500);
 };
 
 // ══════════════════════════════════════════════════════════════════
