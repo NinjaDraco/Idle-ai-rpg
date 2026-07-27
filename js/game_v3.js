@@ -270,6 +270,19 @@ function computeStats() {
 
   const isMultMode = G.save.multiplicativeMode || false;
 
+  function applyMod(statKey, val) {
+    if (!(statKey in cs)) return;
+    if (isMultMode) {
+      if (cs[statKey] === 0) {
+        cs[statKey] = val;
+      } else {
+        cs[statKey] *= (1 + val);
+      }
+    } else {
+      cs[statKey] += val;
+    }
+  }
+
   // Level bonus
   const lvl = G.save.level;
   if (isMultMode) {
@@ -294,11 +307,7 @@ function computeStats() {
         if (poolAf && poolAf.type === 'mult') {
           cs[statKey] *= tierVal;
         } else {
-          if (isMultMode) {
-            cs[statKey] *= (1 + tierVal);
-          } else {
-            cs[statKey] += tierVal;
-          }
+          applyMod(statKey, tierVal);
         }
       }
     }
@@ -320,15 +329,9 @@ function computeStats() {
     const goldAuraVal = pet.goldAura * lvlBonus * evolBonus * petStarMult;
     const critAuraVal = pet.critAura * lvlBonus * evolBonus * petStarMult;
 
-    if (isMultMode) {
-      cs.dmgMult    *= (1 + dmgAuraVal);
-      cs.goldFind   *= (1 + goldAuraVal);
-      cs.critChance *= (1 + critAuraVal);
-    } else {
-      cs.dmgMult    += dmgAuraVal;
-      cs.goldFind   += goldAuraVal;
-      cs.critChance += critAuraVal;
-    }
+    applyMod('dmgMult', dmgAuraVal);
+    applyMod('goldFind', goldAuraVal);
+    applyMod('critChance', critAuraVal);
   }
 
   // Passive skills
@@ -341,11 +344,7 @@ function computeStats() {
     const starCount = owned ? (owned.starCount !== undefined ? owned.starCount : (owned.constellation || 0)) : 0;
     const starMult  = 1 + getStarBonus(starCount);
     if (sk.effect.stat in cs) {
-      if (isMultMode) {
-        cs[sk.effect.stat] *= (1 + sk.effect.val * lvl * starMult);
-      } else {
-        cs[sk.effect.stat] += sk.effect.val * lvl * starMult;
-      }
+      applyMod(sk.effect.stat, sk.effect.val * lvl * starMult);
     }
   }
 
@@ -354,20 +353,12 @@ function computeStats() {
     const lvl = G.save.upgradeLevels[up.id] || 0;
     if (lvl === 0) continue;
     if (up.oneTime) {
-      if (up.stat in cs) {
-        if (isMultMode) {
-          cs[up.stat] *= (1 + up.val);
-        } else {
-          cs[up.stat] += up.val;
-        }
-      }
+      applyMod(up.stat, up.val);
     } else {
-      if (up.stat in cs) {
-        if (isMultMode) {
-          cs[up.stat] *= Math.pow(1 + up.val, lvl);
-        } else {
-          cs[up.stat] += up.val * lvl;
-        }
+      if (isMultMode) {
+        applyMod(up.stat, Math.pow(1 + up.val, lvl) - 1);
+      } else {
+        applyMod(up.stat, up.val * lvl);
       }
     }
   }
@@ -377,9 +368,9 @@ function computeStats() {
     const rLvl = G.save.relicLevels[r.id] || 0;
     if (rLvl > 0 && r.stat in cs) {
       if (isMultMode) {
-        cs[r.stat] *= Math.pow(1 + r.val, rLvl);
+        applyMod(r.stat, Math.pow(1 + r.val, rLvl) - 1);
       } else {
-        cs[r.stat] += r.val * rLvl;
+        applyMod(r.stat, r.val * rLvl);
       }
     }
   }
@@ -388,13 +379,7 @@ function computeStats() {
   for (const pu of GAME_DATA.PRESTIGE_UPGRADES) {
     const bought = G.save.prestigeUpgrades[pu.id] || 0;
     if (!bought) continue;
-    if (pu.stat in cs) {
-      if (isMultMode) {
-        cs[pu.stat] *= (1 + pu.val);
-      } else {
-        cs[pu.stat] += pu.val;
-      }
-    }
+    applyMod(pu.stat, pu.val);
   }
 
   // Rebirths bonus
@@ -428,9 +413,9 @@ function computeStats() {
     const lvl = (G.save.dungeonUpgrades || {})[du.id] || 0;
     if (lvl > 0 && du.stat in cs) {
       if (isMultMode) {
-        cs[du.stat] *= Math.pow(1 + du.val, lvl);
+        applyMod(du.stat, Math.pow(1 + du.val, lvl) - 1);
       } else {
-        cs[du.stat] += du.val * lvl;
+        applyMod(du.stat, du.val * lvl);
       }
     }
   }
