@@ -11,6 +11,8 @@ let selectedItem   = null;
 let currentBanner  = 'pet';
 let lockedAffixes  = new Set();
 
+let globalPetLookup = null;
+
 // ══════════════════════════════════════════════════════════════════
 // BOOT
 // ══════════════════════════════════════════════════════════════════
@@ -522,13 +524,16 @@ UI.renderPets = function() {
   const el = document.getElementById('pets-panel');
   if (!el) return;
 
+  if (!globalPetLookup && typeof GAME_DATA !== 'undefined' && GAME_DATA.PETS) globalPetLookup = new Map(GAME_DATA.PETS.map(p => [p.id, p]));
+  const ownedPetLookup = new Map(G.save.petCollection.map(p => [p.petId, p]));
+
   let html = `<div class="panel-header"><h3>🐾 Active Pets (${G.save.petSlots} slots)</h3></div>
   <div class="active-pets-row">`;
 
   for (let i = 0; i < G.save.petSlots; i++) {
     const pid   = G.save.activePets[i];
-    const pet   = pid ? GAME_DATA.PETS.find(p => p.id === pid) : null;
-    const owned = pid ? G.save.petCollection.find(p => p.petId === pid) : null;
+    const pet   = pid && globalPetLookup ? globalPetLookup.get(pid) : null;
+    const owned = pid ? ownedPetLookup.get(pid) : null;
     const rar   = pet ? GAME_DATA.getRarityById(pet.rarity) : null;
     html += `<div class="pet-slot ${pet ? 'active' : 'empty'}" style="${rar ? 'border-color:'+rar.color+';box-shadow:'+rar.glow : ''}">
       ${pet ? `
@@ -550,7 +555,7 @@ UI.renderPets = function() {
   }
 
   for (const owned of G.save.petCollection) {
-    const pet = GAME_DATA.PETS.find(p => p.id === owned.petId);
+    const pet = globalPetLookup ? globalPetLookup.get(owned.petId) : null;
     if (!pet) continue;
     const rar = GAME_DATA.getRarityById(pet.rarity);
     const evolveable = owned.level >= 50 && !owned.evolved && G.save.materials.petEssence >= 100;
