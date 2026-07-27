@@ -10,7 +10,7 @@
   <meta http-equiv="Expires" content="0" />
   <script>
     // Permanent Auto Cache Buster: Appends current timestamp to CSS so browser can NEVER cache old styles!
-    document.write(`<link rel="stylesheet" href="css/style.css?t=${Date.now()}" />`);
+    document.write(`<link rel="stylesheet" href="css/style.css?v=6" />`);
   </script>
 </head>
 <body>
@@ -193,13 +193,11 @@
 <!-- ═══════════════════════════════════════════════════════
      SCRIPTS (PERMANENT AUTO CACHE BUSTER)
 ═══════════════════════════════════════════════════════ -->
-<script>
-  // Dynamically load game scripts with fresh timestamps so you NEVER need to manually bump versions or clear browser cache again!
-  const ts = Date.now();
-  ['js/eternitynum_v3.js', 'js/data_v3.js', 'js/game_v3.js', 'js/ui_v3.js'].forEach(src => {
-    document.write(`<script src="${src}?t=${ts}"><\/script>`);
-  });
-</script>
+<!-- SCRIPTS -->
+<script src="js/eternitynum_v3.js?v=6"></script>
+<script src="js/data_v3.js?v=6"></script>
+<script src="js/game_v3.js?v=6"></script>
+<script src="js/ui_v3.js?v=6"></script>
 
 <script>
 window.addEventListener('DOMContentLoaded', () => {

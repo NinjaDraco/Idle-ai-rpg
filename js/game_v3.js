@@ -568,7 +568,7 @@ function dealDamage(multiplier = 1, isClick = false) {
   G.save.totalDmgDone    = EN.add(safeEN(G.save.totalDmgDone, EN.fromNumber(0)), dmg);
 
   if (G.save.showDmgNumbers) {
-    spawnDmgFloat(EN.fmt(dmg), isCrit, isClick, critTier);
+    spawnDmgFloat(EN.fmt(dmg) || dmg, isCrit, isClick, critTier);
   }
 
   if (EN.leeq(G.save.currentEnemy.hp, EN.fromNumber(0)) && !_killLock) {

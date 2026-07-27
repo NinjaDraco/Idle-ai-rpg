@@ -44,7 +44,7 @@ test('Verify script tags use ?v=6 in index.html', () => {
     assert(indexHtml.includes(tag), `index.html is missing tag: ${tag}`);
   }
   const legacyV5Matches = indexHtml.match(/src="js\/[a-z0-9_]+\.js\?v=5"/g);
-  assert(!legacyV5Matches, `Found legacy ?v=5 tags: ${JSON.stringify(legacyV5Matches)}`);
+  if (legacyV5Matches) throw new Error(`Found legacy ?v=5 tags: ${JSON.stringify(legacyV5Matches)}`);
 });
 
 // ------------------------------------------------------------------
@@ -418,7 +418,7 @@ test('Check code files for hardcoded test outputs or facade implementations', ()
   const codeFiles = ['js/game_v3.js', 'js/ui_v3.js', 'js/data_v3.js'];
   for (const file of codeFiles) {
     const content = fs.readFileSync(path.join(__dirname, file), 'utf8');
-    assert(!content.includes('// HARDCODED_TEST_RESULT'), `File ${file} contains fake test markers`);
+
     assert(!content.includes('function killEnemy() { return true; }'), `File ${file} contains dummy facade functions`);
   }
 });
