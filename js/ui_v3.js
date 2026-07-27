@@ -696,26 +696,43 @@ UI.useActiveSkill = function(slot) {
 
 UI.renderSkillCooldowns = function() {
   for (let i = 0; i < 4; i++) {
+    const btn = document.querySelector(`[data-skill-slot="${i}"]`);
+    if (!btn) continue;
+
     const sid = G.save.activeSkills[i];
-    if (!sid) continue;
+    if (!sid) {
+      // Show empty state
+      if (!btn.classList.contains('empty')) {
+        btn.className = 'skill-slot-btn empty';
+        btn.innerHTML = `<div class="sk-empty">Skill ${i+1}<br><small>Empty</small></div>`;
+      }
+      continue;
+    }
+
     const skill = GAME_DATA.SKILLS.active.find(s => s.id === sid);
     if (!skill) continue;
+    const rar   = GAME_DATA.getRarityById(skill.rarity);
     const cs    = G.computedStats;
     const cdms  = skill.cooldown * (1 - cs.cdReduction) * 1000;
     const elapsed = Date.now() - (G.save.skillCooldowns[skill.id] || 0);
     const rem    = Math.max(0, cdms - elapsed) / 1000;
-    const btn    = document.querySelector(`[data-skill-slot="${i}"] .sk-cd-overlay`);
-    const ready  = document.querySelector(`[data-skill-slot="${i}"] .sk-ready`);
-    if (btn)   btn.textContent = rem.toFixed(1) + 's';
-    if (ready && rem > 0) {
-      ready.style.display = 'none';
-      if (btn) btn.style.display = 'flex';
-    } else if (ready && rem <= 0) {
-      ready.style.display = 'flex';
-      if (btn) btn.style.display = 'none';
-    }
+    const isReady = rem <= 0;
+
+    // Update border color based on rarity
+    btn.style.borderColor = rar.color;
+    btn.style.boxShadow = isReady ? `0 0 10px ${rar.color}66` : 'none';
+    btn.className = `skill-slot-btn has-skill${isReady ? ' ready' : ''}`;
+
+    btn.innerHTML = `
+      <div class="sk-icon" style="font-size:1.4rem;">${skill.icon}</div>
+      <div class="sk-name" style="font-size:0.65rem;font-weight:700;color:${rar.color};text-overflow:ellipsis;overflow:hidden;white-space:nowrap;max-width:58px;">${skill.name}</div>
+      ${isReady
+        ? `<div class="sk-ready" style="font-size:0.7rem;font-weight:800;color:#4ade80;display:flex;">✓ READY</div>`
+        : `<div class="sk-cd-overlay" style="font-size:0.8rem;font-weight:800;color:#f59e0b;display:flex;">${rem.toFixed(1)}s</div>`
+      }`;
   }
 };
+
 
 // ══════════════════════════════════════════════════════════════════
 // UPGRADES TAB

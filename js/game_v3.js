@@ -417,17 +417,17 @@ function computeStats() {
 function getBaseDmg() {
   const stage = G.save.currentStage || 1;
   const lvl  = G.save.level || 1;
-  // Polynomial Level Scaling: steady progression without exponential runaway inflation to Centillions!
-  const lvlDmg = 10 + lvl * 15 + Math.pow(lvl, 1.6);
+  // Strong polynomial level scaling so level actually matters a LOT
+  const lvlDmg = 10 + lvl * 50 + Math.pow(lvl, 2.0);
   let base = EN.fromNumber(lvlDmg);
   
-  // Gentle Stage Progression Bonus (1.04^stage instead of 1.08^stage, so weapons and upgrades matter!)
-  base = EN.mul(base, EN.pow(EN.fromNumber(1.04), EN.fromNumber(stage)));
+  // 1.07^stage progression — stages actually push DPS meaningfully!
+  base = EN.mul(base, EN.pow(EN.fromNumber(1.07), EN.fromNumber(stage)));
 
   const weapon = G.save.equipped.weapon;
   if (weapon) {
     const wRarityIdx = GAME_DATA.RARITY_INDEX[weapon.rarity] || 0;
-    base = EN.mul(base, EN.fromNumber(1 + wRarityIdx * 0.5 + weapon.upgradeLevel * 0.15));
+    base = EN.mul(base, EN.fromNumber(1 + wRarityIdx * 1.0 + weapon.upgradeLevel * 0.25));
   }
   return base;
 }
@@ -623,8 +623,8 @@ function killEnemy() {
   G.save.gold = EN.add(G.save.gold, gold);
   G.save.totalGoldEarned = EN.add(G.save.totalGoldEarned, gold);
 
-  const stage = G.save.currentStage || 1;
-  const expGain = EN.mul(EN.fromNumber(10 + stage * 5), EN.fromNumber(cs.expBonus));
+  // EXP gain scales with level so you always keep leveling up — 10 * level^0.9 * stage bonus
+  const expGain = EN.mul(EN.fromNumber(10 + Math.pow(G.save.level, 0.9) * 20 + stage * 2), EN.fromNumber(cs.expBonus));
   G.save.exp    = EN.add(G.save.exp, expGain);
   checkLevelUp();
 
@@ -693,10 +693,12 @@ function killEnemy() {
 }
 
 function checkLevelUp() {
-  const cap = G.computedStats.levelCap;
-  if (G.save.level >= cap) return;
-  const expNeeded = EN.mul(EN.fromNumber(10), EN.pow(EN.fromNumber(G.save.level), EN.fromNumber(1.8)));
-  if (EN.meeq(G.save.exp, expNeeded)) {
+  const cap = G.computedStats.levelCap || 999999;
+  // Loop until EXP is fully consumed — allows multiple level-ups per kill!
+  let loops = 0;
+  while (G.save.level < cap && loops++ < 100) {
+    const expNeeded = EN.mul(EN.fromNumber(10), EN.pow(EN.fromNumber(G.save.level), EN.fromNumber(1.8)));
+    if (!EN.meeq(G.save.exp, expNeeded)) break;
     G.save.exp   = EN.sub(G.save.exp, expNeeded);
     G.save.level += 1;
     G.computedStats = computeStats();
