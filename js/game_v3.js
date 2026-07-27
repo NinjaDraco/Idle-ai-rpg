@@ -268,9 +268,15 @@ function computeStats() {
     finalGoldMult: 1,
   };
 
+  const isMultMode = G.save.multiplicativeMode || false;
+
   // Level bonus
   const lvl = G.save.level;
-  cs.dmgMult += (lvl - 1) * 0.10;
+  if (isMultMode) {
+    cs.dmgMult *= Math.pow(1.10, lvl - 1);
+  } else {
+    cs.dmgMult += (lvl - 1) * 0.10;
+  }
 
   // Equipment affixes (8 slots)
   for (const slot of GAME_DATA.EQUIP_SLOTS) {
@@ -288,7 +294,11 @@ function computeStats() {
         if (poolAf && poolAf.type === 'mult') {
           cs[statKey] *= tierVal;
         } else {
-          cs[statKey] += tierVal;
+          if (isMultMode) {
+            cs[statKey] *= (1 + tierVal);
+          } else {
+            cs[statKey] += tierVal;
+          }
         }
       }
     }
@@ -305,9 +315,20 @@ function computeStats() {
     const evolBonus = owned && owned.evolved ? 1.8 : 1;
     const petStarCount = owned ? (owned.starCount !== undefined ? owned.starCount : (owned.duplicates || owned.constellation || 0)) : 0;
     const petStarMult  = 1 + getStarBonus(petStarCount);
-    cs.dmgMult    += pet.dmgAura  * lvlBonus * evolBonus * petStarMult * (1 + cs.petDmg);
-    cs.goldFind   += pet.goldAura * lvlBonus * evolBonus * petStarMult;
-    cs.critChance += pet.critAura * lvlBonus * evolBonus * petStarMult;
+    
+    const dmgAuraVal = pet.dmgAura  * lvlBonus * evolBonus * petStarMult * (1 + cs.petDmg);
+    const goldAuraVal = pet.goldAura * lvlBonus * evolBonus * petStarMult;
+    const critAuraVal = pet.critAura * lvlBonus * evolBonus * petStarMult;
+
+    if (isMultMode) {
+      cs.dmgMult    *= (1 + dmgAuraVal);
+      cs.goldFind   *= (1 + goldAuraVal);
+      cs.critChance *= (1 + critAuraVal);
+    } else {
+      cs.dmgMult    += dmgAuraVal;
+      cs.goldFind   += goldAuraVal;
+      cs.critChance += critAuraVal;
+    }
   }
 
   // Passive skills
@@ -320,7 +341,11 @@ function computeStats() {
     const starCount = owned ? (owned.starCount !== undefined ? owned.starCount : (owned.constellation || 0)) : 0;
     const starMult  = 1 + getStarBonus(starCount);
     if (sk.effect.stat in cs) {
-      cs[sk.effect.stat] += sk.effect.val * lvl * starMult;
+      if (isMultMode) {
+        cs[sk.effect.stat] *= (1 + sk.effect.val * lvl * starMult);
+      } else {
+        cs[sk.effect.stat] += sk.effect.val * lvl * starMult;
+      }
     }
   }
 
@@ -329,9 +354,21 @@ function computeStats() {
     const lvl = G.save.upgradeLevels[up.id] || 0;
     if (lvl === 0) continue;
     if (up.oneTime) {
-      if (up.stat in cs) cs[up.stat] += up.val;
+      if (up.stat in cs) {
+        if (isMultMode) {
+          cs[up.stat] *= (1 + up.val);
+        } else {
+          cs[up.stat] += up.val;
+        }
+      }
     } else {
-      if (up.stat in cs) cs[up.stat] += up.val * lvl;
+      if (up.stat in cs) {
+        if (isMultMode) {
+          cs[up.stat] *= Math.pow(1 + up.val, lvl);
+        } else {
+          cs[up.stat] += up.val * lvl;
+        }
+      }
     }
   }
 
@@ -339,7 +376,11 @@ function computeStats() {
   for (const r of GAME_DATA.RELICS) {
     const rLvl = G.save.relicLevels[r.id] || 0;
     if (rLvl > 0 && r.stat in cs) {
-      cs[r.stat] += r.val * rLvl;
+      if (isMultMode) {
+        cs[r.stat] *= Math.pow(1 + r.val, rLvl);
+      } else {
+        cs[r.stat] += r.val * rLvl;
+      }
     }
   }
 
@@ -347,13 +388,24 @@ function computeStats() {
   for (const pu of GAME_DATA.PRESTIGE_UPGRADES) {
     const bought = G.save.prestigeUpgrades[pu.id] || 0;
     if (!bought) continue;
-    if (pu.stat in cs) cs[pu.stat] += pu.val;
+    if (pu.stat in cs) {
+      if (isMultMode) {
+        cs[pu.stat] *= (1 + pu.val);
+      } else {
+        cs[pu.stat] += pu.val;
+      }
+    }
   }
 
   // Rebirths bonus
   if (G.save.rebirths > 0) {
-    cs.dmgMult  *= 1 + G.save.rebirths * 0.50;
-    cs.goldFind *= 1 + G.save.rebirths * 0.30;
+    if (isMultMode) {
+      cs.dmgMult  *= Math.pow(1.50, G.save.rebirths);
+      cs.goldFind *= Math.pow(1.30, G.save.rebirths);
+    } else {
+      cs.dmgMult  *= 1 + G.save.rebirths * 0.50;
+      cs.goldFind *= 1 + G.save.rebirths * 0.30;
+    }
   }
 
   // Stage pass stackable bonus & Big Zone Pass Mastery (Tap Titans style scaling)
@@ -374,7 +426,13 @@ function computeStats() {
   // Dungeon Upgrades & Level Clears
   for (const du of (GAME_DATA.DUNGEON_UPGRADES || [])) {
     const lvl = (G.save.dungeonUpgrades || {})[du.id] || 0;
-    if (lvl > 0 && du.stat in cs) cs[du.stat] += du.val * lvl;
+    if (lvl > 0 && du.stat in cs) {
+      if (isMultMode) {
+        cs[du.stat] *= Math.pow(1 + du.val, lvl);
+      } else {
+        cs[du.stat] += du.val * lvl;
+      }
+    }
   }
   const dLvls = G.save.dungeonLevels || {};
   if (dLvls.gold_mine > 1) cs.goldFind *= (1 + (dLvls.gold_mine - 1) * 0.05);

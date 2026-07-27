@@ -286,9 +286,12 @@ UI.renderEquipment = function() {
         <label style="color:#a78bfa;font-weight:700;cursor:pointer;"><input type="checkbox" id="as-autoequip" ${G.save.autoEquip !== false ? 'checked' : ''} onchange="G.save.autoEquip=this.checked"> ⚡ Auto-Equip Better Drops</label>
       </div>
     </div>
-    <div class="auto-sell-options">
-      <label><input type="checkbox" id="as-common" ${G.save.autoSell.common?'checked':''} onchange="G.save.autoSell.common=this.checked"> Common</label>
-      <label><input type="checkbox" id="as-uncommon" ${G.save.autoSell.uncommon?'checked':''} onchange="G.save.autoSell.uncommon=this.checked"> Uncommon</label>
+    <div class="auto-sell-options" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <div style="display:flex;gap:12px;">
+        <label><input type="checkbox" id="as-common" ${G.save.autoSell.common?'checked':''} onchange="G.save.autoSell.common=this.checked"> Common</label>
+        <label><input type="checkbox" id="as-uncommon" ${G.save.autoSell.uncommon?'checked':''} onchange="G.save.autoSell.uncommon=this.checked"> Uncommon</label>
+      </div>
+      <label style="color:#fbbf24;font-weight:800;cursor:pointer;background:rgba(251,191,36,0.1);padding:4px 10px;border-radius:6px;border:1px solid rgba(251,191,36,0.2);" title="Multiply all stats instead of adding them up!"><input type="checkbox" id="as-multmode" ${G.save.multiplicativeMode ? 'checked' : ''} onchange="G.save.multiplicativeMode=this.checked;G.computeStats();G.baseDmg=G.getBaseDmg();UI.renderAll();"> ✖️ Multiplicative Mode</label>
     </div>
   `;
   container.appendChild(filterBox);
