@@ -686,89 +686,94 @@ function dealDamage(multiplier = 1, isClick = false) {
 function killEnemy() {
   if (_killLock) return; // Prevent re-entry from multiple auto-attack ticks in same frame
   _killLock = true;
-  const enemy = G.save.currentEnemy;
-  if (!enemy) { _killLock = false; return; }
+  
+  try {
+    const enemy = G.save.currentEnemy;
+    if (!enemy) return;
 
-  if (G.save.activeDungeon) {
-    _killLock = false;
-    exitDungeon(true);
-    return;
-  }
-
-  const cs = G.computedStats;
-
-  // Gold & EXP
-  let gold = EN.mul(enemy.gold, EN.fromNumber(cs.goldFind));
-  G.save.gold = EN.add(G.save.gold, gold);
-  G.save.totalGoldEarned = EN.add(G.save.totalGoldEarned, gold);
-
-  // EXP gain scales with level so you always keep leveling up — 10 * level^0.9 * stage bonus
-  const expGain = EN.mul(EN.fromNumber(10 + Math.pow(G.save.level, 0.9) * 20 + stage * 2), EN.fromNumber(cs.expBonus));
-  G.save.exp    = EN.add(G.save.exp, expGain);
-  checkLevelUp();
-
-  // Kills & Counters
-  G.save.totalKills++;
-  G.save.killStreak++;
-  if (enemy.isBoss)  G.save.bossKills++;
-  if (enemy.isElite) G.save.stats.eliteKills++;
-
-  // Item Drop
-  if (Math.random() < 0.18 * cs.dropRate) {
-    dropItem(enemy);
-  }
-  // Material Drop
-  if (Math.random() < 0.10 * cs.dropRate) {
-    dropMaterial();
-  }
-
-  addLog(`Killed ${enemy.name} | +${EN.fmt(gold)} 💰`, 'kill');
-
-  // ── Tap Titans Stage Progression ────────────────────────────────
-  const wasBoss = G.save.isBossStage || enemy.isBoss;
-
-  if (wasBoss) {
-    // Stage Boss defeated!
-    G.save.bossTimerActive = false;
-    addLog(`👑 Stage ${stage} Boss Defeated!`, 'boss');
-    G.events.emit('bossDefeated', { stage });
-
-    if (G.save.autoAdvance) {
-      G.save.currentStage++;
-      G.save.maxStage = Math.max(G.save.maxStage || 1, G.save.currentStage);
-      G.save.enemiesKilledInStage = 0;
-      G.save.isBossStage = false;
-      addLog(`🌟 Advanced to Stage ${G.save.currentStage}!`, 'loot');
-      spawnEnemy(G.save.currentStage, false);
-    } else {
-      G.save.enemiesKilledInStage = 0;
-      G.save.isBossStage = false;
-      spawnEnemy(G.save.currentStage, false);
+    if (G.save.activeDungeon) {
+      exitDungeon(true);
+      return;
     }
-  } else {
-    // Regular monster defeated
-    G.save.enemiesKilledInStage = (G.save.enemiesKilledInStage || 0) + 1;
-    if (G.save.enemiesKilledInStage >= (G.save.enemiesPerStage || 10)) {
-      G.save.isBossStage = true;
-      spawnEnemy(G.save.currentStage, true);
-    } else {
-      spawnEnemy(G.save.currentStage, false);
+
+    const cs = G.computedStats;
+    const stage = G.save.currentStage || 1;
+
+    // Gold & EXP
+    let gold = EN.mul(enemy.gold, EN.fromNumber(cs.goldFind));
+    G.save.gold = EN.add(G.save.gold, gold);
+    G.save.totalGoldEarned = EN.add(G.save.totalGoldEarned, gold);
+
+    // EXP gain scales with level so you always keep leveling up — 10 * level^0.9 * stage bonus
+    const expGain = EN.mul(EN.fromNumber(10 + Math.pow(G.save.level, 0.9) * 20 + stage * 2), EN.fromNumber(cs.expBonus));
+    G.save.exp    = EN.add(G.save.exp, expGain);
+    checkLevelUp();
+
+    // Kills & Counters
+    G.save.totalKills++;
+    G.save.killStreak++;
+    if (enemy.isBoss)  G.save.bossKills++;
+    if (enemy.isElite) G.save.stats.eliteKills++;
+
+    // Item Drop
+    if (Math.random() < 0.18 * cs.dropRate) {
+      dropItem(enemy);
     }
+    // Material Drop
+    if (Math.random() < 0.10 * cs.dropRate) {
+      dropMaterial();
+    }
+
+    addLog(`Killed ${enemy.name} | +${EN.fmt(gold)} 💰`, 'kill');
+
+    // ── Tap Titans Stage Progression ────────────────────────────────
+    const wasBoss = G.save.isBossStage || enemy.isBoss;
+
+    if (wasBoss) {
+      // Stage Boss defeated!
+      G.save.bossTimerActive = false;
+      addLog(`👑 Stage ${stage} Boss Defeated!`, 'boss');
+      G.events.emit('bossDefeated', { stage });
+
+      if (G.save.autoAdvance) {
+        G.save.currentStage++;
+        G.save.maxStage = Math.max(G.save.maxStage || 1, G.save.currentStage);
+        G.save.enemiesKilledInStage = 0;
+        G.save.isBossStage = false;
+        addLog(`🌟 Advanced to Stage ${G.save.currentStage}!`, 'loot');
+        spawnEnemy(G.save.currentStage, false);
+      } else {
+        G.save.enemiesKilledInStage = 0;
+        G.save.isBossStage = false;
+        spawnEnemy(G.save.currentStage, false);
+      }
+    } else {
+      // Regular monster defeated
+      G.save.enemiesKilledInStage = (G.save.enemiesKilledInStage || 0) + 1;
+      if (G.save.enemiesKilledInStage >= (G.save.enemiesPerStage || 10)) {
+        G.save.isBossStage = true;
+        spawnEnemy(G.save.currentStage, true);
+      } else {
+        spawnEnemy(G.save.currentStage, false);
+      }
+    }
+
+    G.computedStats = computeStats();
+    G.baseDmg = getBaseDmg();
+    G.events.emit('stageProgress', { stage: G.save.currentStage, kills: G.save.enemiesKilledInStage });
+
+    // Adrenaline
+    if (Math.random() < cs.adrenaline) {
+      G.adrenalineActive = true;
+      setTimeout(() => { G.adrenalineActive = false; }, 2000);
+    }
+
+    G.events.emit('kill', { enemy, gold });
+  } catch (err) {
+    console.error("Error in killEnemy:", err);
+  } finally {
+    _killLock = false; // Guaranteed to release the lock!
   }
-
-  G.computedStats = computeStats();
-  G.baseDmg = getBaseDmg();
-  _killLock = false; // Release re-entry lock after enemy is replaced
-  G.events.emit('stageProgress', { stage: G.save.currentStage, kills: G.save.enemiesKilledInStage });
-
-  // Adrenaline
-  if (Math.random() < cs.adrenaline) {
-    G.adrenalineActive = true;
-    setTimeout(() => { G.adrenalineActive = false; }, 2000);
-
-  }
-
-  G.events.emit('kill', { enemy, gold });
 }
 
 function checkLevelUp() {
