@@ -338,9 +338,15 @@ const PETS = [
   { id:'eternity_serp', name:'Eternity Serpent',icon:'🌟', rarity:'mythic',    dmgAura:1.50, goldAura:1.00, critAura:0.30, passive:'Gold Tide: ×10 gold' },
   { id:'void_leviathan',name:'Void Leviathan',  icon:'🌊', rarity:'mythic',    dmgAura:2.00, goldAura:0.50, critAura:0.25, passive:'Deep Terror: +200% dmg' },
   // Cosmic / Divine
-  { id:'cosmos_dragon', name:'Cosmos Dragon',   icon:'🌌', rarity:'cosmic',    dmgAura:3.00, goldAura:1.50, critAura:0.40, passive:'Star Fury: +300% all dmg' },
-  { id:'null_entity',   name:'Null Entity',     icon:'⬛', rarity:'eternal',   dmgAura:5.00, goldAura:3.00, critAura:0.50, passive:'Nullify: +500% dmg' },
-  { id:'deity_beast',   name:'The Deity Beast',  icon:'✨', rarity:'divine',   dmgAura:10.0, goldAura:5.00, critAura:0.75, passive:'Divine Providence: All stats ×2' },
+  { id:'cosmos_dragon',  name:'Cosmos Dragon',    icon:'🌌', rarity:'cosmic',    dmgAura:3.00, goldAura:1.50, critAura:0.40, passive:'Star Fury: +300% all dmg' },
+  { id:'astral_wolf',    name:'Astral Wolf',      icon:'🕷️', rarity:'cosmic',    dmgAura:2.50, goldAura:2.00, critAura:0.50, passive:'Nebula Howl: +250% dmg, +200% gold' },
+  { id:'void_phoenix2',  name:'Void Phoenix Prime',icon:'🔥', rarity:'cosmic',    dmgAura:3.50, goldAura:1.00, critAura:0.45, passive:'Cosmic Rebirth: ×3 DPS on boss kill' },
+  { id:'star_whale',     name:'Star Whale',       icon:'🐳', rarity:'cosmic',    dmgAura:2.80, goldAura:3.00, critAura:0.35, passive:'Void Song: +300% gold, +280% dmg' },
+  { id:'null_entity',    name:'Null Entity',      icon:'⬛', rarity:'eternal',   dmgAura:5.00, goldAura:3.00, critAura:0.50, passive:'Nullify: +500% dmg' },
+  { id:'eternity_hydra', name:'Eternity Hydra',   icon:'🐉', rarity:'eternal',   dmgAura:6.00, goldAura:4.00, critAura:0.60, passive:'Eternal Regrowth: ×5 all stats' },
+  { id:'primal_titan',   name:'Primal Titan',     icon:'⛰️', rarity:'eternal',   dmgAura:7.00, goldAura:3.50, critAura:0.55, passive:'World Shatter: +700% dmg' },
+  { id:'deity_beast',    name:'The Deity Beast',  icon:'✨', rarity:'divine',    dmgAura:10.0, goldAura:5.00, critAura:0.75, passive:'Divine Providence: All stats ×2' },
+  { id:'absolute_god',   name:'Absolute God',     icon:'🌟', rarity:'divine',    dmgAura:15.0, goldAura:8.00, critAura:1.00, passive:'Godhood: +1500% all dmg, +800% gold' },
 ];
 
 // ══════════════════════════════════════════════════════════════════
@@ -348,17 +354,21 @@ const PETS = [
 // ══════════════════════════════════════════════════════════════════
 const SKILLS = {
   active: [
-    { id:'blade_storm',   name:'Blade Storm',      icon:'🌀', rarity:'common',    cooldown:8,  dmgMult:3,      desc:'Spin and hit all for 300% dmg' },
-    { id:'power_strike',  name:'Power Strike',     icon:'⚡', rarity:'common',    cooldown:5,  dmgMult:4,      desc:'Single massive hit 400% dmg' },
-    { id:'fire_bomb',     name:'Fire Bomb',        icon:'🔥', rarity:'uncommon',  cooldown:10, dmgMult:8,      desc:'Throw a bomb for 800% fire dmg' },
-    { id:'frost_nova',    name:'Frost Nova',       icon:'❄️', rarity:'uncommon',  cooldown:12, dmgMult:6,      desc:'Deal 600% ice dmg' },
-    { id:'mana_burst',    name:'Mana Burst',       icon:'💫', rarity:'rare',      cooldown:15, dmgMult:20,     desc:'1000% magic dmg' },
-    { id:'thunder_call',  name:'Thunder Call',     icon:'⚡', rarity:'rare',      cooldown:18, dmgMult:25,     desc:'Call lightning for 2500% dmg' },
-    { id:'void_rift',     name:'Void Rift',        icon:'🌑', rarity:'epic',      cooldown:25, dmgMult:80,     desc:'Open void: 5000% shadow dmg' },
-    { id:'dragons_breath',name:'Dragon\'s Breath', icon:'🐉', rarity:'epic',      cooldown:30, dmgMult:150,    desc:'Breathe fire: 15000% burn dmg' },
-    { id:'starfall',      name:'Starfall',         icon:'⭐', rarity:'legendary', cooldown:45, dmgMult:500,    desc:'Rain stars: 50000% cosmic dmg' },
-    { id:'eternity_col',  name:'Eternity Collapse',icon:'🌌', rarity:'mythic',    cooldown:120,dmgMult:10000,  desc:'Collapse reality: 1e6× dmg' },
-    { id:'divine_wrath',  name:'Divine Wrath',     icon:'☀️', rarity:'cosmic',    cooldown:300,dmgMult:1e8,    desc:'God\'s judgment: instant boss kill' },
+    { id:'blade_storm',   name:'Blade Storm',      icon:'🌀', rarity:'common',    cooldown:8,   dmgMult:3,      desc:'Spin and hit all for 300% dmg' },
+    { id:'power_strike',  name:'Power Strike',     icon:'⚡', rarity:'common',    cooldown:5,   dmgMult:4,      desc:'Single massive hit 400% dmg' },
+    { id:'fire_bomb',     name:'Fire Bomb',        icon:'🔥', rarity:'uncommon',  cooldown:10,  dmgMult:8,      desc:'Throw a bomb for 800% fire dmg' },
+    { id:'frost_nova',    name:'Frost Nova',       icon:'❄️', rarity:'uncommon',  cooldown:12,  dmgMult:6,      desc:'Deal 600% ice dmg' },
+    { id:'mana_burst',    name:'Mana Burst',       icon:'💫', rarity:'rare',      cooldown:15,  dmgMult:20,     desc:'1000% magic dmg' },
+    { id:'thunder_call',  name:'Thunder Call',     icon:'⚡', rarity:'rare',      cooldown:18,  dmgMult:25,     desc:'Call lightning for 2500% dmg' },
+    { id:'void_rift',     name:'Void Rift',        icon:'🌑', rarity:'epic',      cooldown:25,  dmgMult:80,     desc:'Open void: 5000% shadow dmg' },
+    { id:'dragons_breath',name:'Dragon\'s Breath', icon:'🐉', rarity:'epic',      cooldown:30,  dmgMult:150,    desc:'Breathe fire: 15000% burn dmg' },
+    { id:'starfall',      name:'Starfall',         icon:'⭐', rarity:'legendary', cooldown:45,  dmgMult:500,    desc:'Rain stars: 50000% cosmic dmg' },
+    { id:'eternity_col',  name:'Eternity Collapse',icon:'🌌', rarity:'mythic',    cooldown:120, dmgMult:10000,  desc:'Collapse reality: 1e6× dmg' },
+    { id:'divine_wrath',  name:'Divine Wrath',     icon:'☀️', rarity:'cosmic',    cooldown:300, dmgMult:1e8,    desc:'God\'s judgment: instant boss kill' },
+    { id:'void_annihilation',name:'Void Annihilation',icon:'🌀', rarity:'cosmic',  cooldown:200, dmgMult:5e8,    desc:'Erase existence: 5×10⁸% boss dmg' },
+    { id:'eternity_rend', name:'Eternity Rend',    icon:'🕳️', rarity:'eternal',   cooldown:600, dmgMult:1e12,   desc:'Rip time itself: 10¹²% ultimate dmg' },
+    { id:'absolute_zero', name:'Absolute Zero',    icon:'❄️', rarity:'eternal',   cooldown:480, dmgMult:8e11,   desc:'Freeze all: 8×10¹¹% cosmic ice dmg' },
+    { id:'divine_genesis',name:'Divine Genesis',   icon:'🌟', rarity:'divine',    cooldown:1800,dmgMult:1e18,   desc:'Create universe: infinite-scale nuke' },
   ],
   passive: [
     { id:'iron_skin',     name:'Iron Skin',        icon:'🛡️', rarity:'common',    effect:{ stat:'dmgReduction', val:0.05 }, desc:'+5% Damage Reduction' },
@@ -373,6 +383,11 @@ const SKILLS = {
     { id:'death_mark',    name:'Death Mark',       icon:'💀', rarity:'epic',      effect:{ stat:'bossDmg',      val:0.60 }, desc:'+60% Boss Damage' },
     { id:'void_mastery',  name:'Void Mastery',     icon:'🌑', rarity:'legendary', effect:{ stat:'dmgMult',      val:1.00 }, desc:'+100% All Damage' },
     { id:'eternity_aura', name:'Eternity Aura',    icon:'🌟', rarity:'mythic',    effect:{ stat:'dmgMult',      val:3.00 }, desc:'+300% All Damage' },
+    { id:'cosmic_resonance',name:'Cosmic Resonance',icon:'🌌',rarity:'cosmic',    effect:{ stat:'dmgMult',      val:8.00 }, desc:'+800% All Damage' },
+    { id:'star_emperor',  name:'Star Emperor',     icon:'⭐', rarity:'cosmic',    effect:{ stat:'goldFind',     val:5.00 }, desc:'+500% Gold Find' },
+    { id:'void_sovereign',name:'Void Sovereign',   icon:'🖤', rarity:'eternal',   effect:{ stat:'dmgMult',      val:25.0 }, desc:'+2500% All Damage' },
+    { id:'eternal_fortune',name:'Eternal Fortune', icon:'🌺', rarity:'eternal',   effect:{ stat:'goldFind',     val:15.0 }, desc:'+1500% Gold Find' },
+    { id:'divine_omnipotence',name:'Divine Omnipotence',icon:'✨',rarity:'divine',effect:{ stat:'dmgMult',      val:100.0}, desc:'+10000% All Damage' },
   ],
 };
 

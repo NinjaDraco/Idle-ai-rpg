@@ -553,7 +553,7 @@ UI.renderPets = function() {
 
   let html = `<div class="panel-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
     <h3>🐾 Active Pets (${G.save.petSlots} slots)</h3>
-    <button class="btn-primary" onclick="if(G.equipBestPets){G.equipBestPets();UI.showToast('Equipped Best Pets!','success');UI.renderPets();}" style="padding:6px 14px;font-size:0.8rem;cursor:pointer;">⚡ EQUIP BEST PETS</button>
+    <button class="btn-primary" onclick="G.equipBestPets();showToast('⚡ Equipped Best Pets!','success');UI.renderPets();UI.renderRightPanel()" style="padding:6px 14px;font-size:0.8rem;cursor:pointer;">⚡ EQUIP BEST PETS</button>
   </div>
   <div class="active-pets-row">`;
 
@@ -629,7 +629,7 @@ UI.renderSkills = function() {
 
   let html = `<div class="panel-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
     <h3>⚡ Active Skill Slots (4)</h3>
-    <button class="btn-primary" onclick="if(G.equipBestSkills){G.equipBestSkills();UI.showToast('Equipped Best Skills!','success');UI.renderSkills();}" style="padding:6px 14px;font-size:0.8rem;cursor:pointer;">⚡ EQUIP BEST SKILLS</button>
+    <button class="btn-primary" onclick="G.equipBestSkills();showToast('⚡ Equipped Best Skills!','success');UI.renderSkills()" style="padding:6px 14px;font-size:0.8rem;cursor:pointer;">⚡ EQUIP BEST SKILLS</button>
   </div><div class="skill-slots-row">`;
   for (let i = 0; i < 4; i++) {
     const sid   = G.save.activeSkills[i];
@@ -822,6 +822,11 @@ UI.renderSummon = function() {
       × 100 Pull<br><small>💰 ${EN.fmt(cost100)} (15 free!)</small>
     </button>
   </div>
+  <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap;">
+    <button onclick="UI.doAutoDrawUntilCosmic('${currentBanner}')" class="btn-summon-cosmic" style="flex:1; background:linear-gradient(90deg,#00bcd4,#e040fb,#ffd700); color:#000; font-weight:900; border:none; border-radius:8px; padding:12px 10px; cursor:pointer; box-shadow:0 0 20px rgba(0,188,212,0.6); font-size:0.9rem;">
+      🌌 AUTO DRAW UNTIL COSMIC<br><small style='color:#000'>Spends Gold continuously until Cosmic★ drops!</small>
+    </button>
+  </div>
   <div id="summon-result-area"></div>`;
 
   el.innerHTML = html;
@@ -840,6 +845,50 @@ UI.doSummon = function(bannerId, count) {
   else if (typeof UI.renderHUD === 'function') UI.renderHUD();
   UI.renderRightPanel();
 };
+
+UI.doAutoDrawUntilCosmic = function(bannerId) {
+  const COSMIC_RARITIES = new Set(['cosmic', 'eternal', 'divine']);
+  let totalPulls = 0;
+  let allResults = [];
+  let foundCosmic = false;
+  let safetyLimit = 5000; // prevent infinite gold drain
+
+  while (!foundCosmic && safetyLimit-- > 0) {
+    const cost100 = G.getSummonCost ? G.getSummonCost(100) : EN.fromNumber(425000);
+    if (!EN.meeq(G.save.gold, cost100)) {
+      // Try 10 pull
+      const cost10 = G.getSummonCost ? G.getSummonCost(10) : EN.fromNumber(45000);
+      if (!EN.meeq(G.save.gold, cost10)) {
+        showToast(`💸 Not enough gold! Pulled ${totalPulls} times, no Cosmic found.`, 'error');
+        break;
+      }
+      const results = G.summon(bannerId, 10);
+      if (!results || results.length === 0) break;
+      allResults.push(...results);
+      totalPulls += 10;
+      if (results.some(r => COSMIC_RARITIES.has(r.rarity))) { foundCosmic = true; }
+    } else {
+      const results = G.summon(bannerId, 100);
+      if (!results || results.length === 0) break;
+      allResults.push(...results);
+      totalPulls += 100;
+      if (results.some(r => COSMIC_RARITIES.has(r.rarity))) { foundCosmic = true; }
+    }
+  }
+
+  if (foundCosmic) {
+    showToast(`🌌 COSMIC FOUND after ${totalPulls} pulls!`, 'loot');
+  }
+
+  if (allResults.length > 0) {
+    UI.showSummonResult({ bannerId, results: allResults });
+  }
+  UI.renderSummon();
+  UI.renderPets();
+  UI.renderSkills();
+  UI.renderRightPanel();
+};
+
 
 UI.showSummonResult = function({ bannerId, results }) {
   const area = document.getElementById('summon-result-area');
