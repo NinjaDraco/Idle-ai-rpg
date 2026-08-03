@@ -34,14 +34,14 @@ function rollRarity(bias = 1) {
 // EQUIPMENT SLOTS
 // ══════════════════════════════════════════════════════════════════
 const EQUIP_SLOTS = [
-  { id: 'weapon',   name: 'Weapon',      icon: '⚔️',  dmgWeight: 0.35, desc: 'Primary damage driver' },
-  { id: 'offhand',  name: 'Off-Hand',    icon: '🛡️',  dmgWeight: 0.15, desc: 'Utility & secondary power' },
-  { id: 'helmet',   name: 'Helmet',      icon: '⛑️',  dmgWeight: 0.10, desc: 'Crit & EXP focus' },
-  { id: 'chest',    name: 'Chest',       icon: '🥋',  dmgWeight: 0.15, desc: 'Bulk & sustain' },
-  { id: 'gloves',   name: 'Gloves',      icon: '🧤',  dmgWeight: 0.10, desc: 'Speed & combo' },
-  { id: 'boots',    name: 'Boots',       icon: '👢',  dmgWeight: 0.05, desc: 'Gold & flow' },
-  { id: 'ring',     name: 'Ring',        icon: '💍',  dmgWeight: 0.05, desc: 'Elemental & specials' },
-  { id: 'amulet',   name: 'Amulet',      icon: '📿',  dmgWeight: 0.05, desc: 'Synergy & passives' },
+  { id: 'weapon',   name: 'Weapon',      icon: 'weapon',  dmgWeight: 0.35, desc: 'Primary damage driver' },
+  { id: 'offhand',  name: 'Off-Hand',    icon: 'shield',  dmgWeight: 0.15, desc: 'Utility & secondary power' },
+  { id: 'helmet',   name: 'Helmet',      icon: 'helmet',  dmgWeight: 0.10, desc: 'Crit & EXP focus' },
+  { id: 'chest',    name: 'Chest',       icon: 'chest',   dmgWeight: 0.15, desc: 'Bulk & sustain' },
+  { id: 'gloves',   name: 'Gloves',      icon: 'gloves',  dmgWeight: 0.10, desc: 'Speed & combo' },
+  { id: 'boots',    name: 'Boots',       icon: 'boots',   dmgWeight: 0.05, desc: 'Gold & flow' },
+  { id: 'ring',     name: 'Ring',        icon: 'ring',    dmgWeight: 0.05, desc: 'Elemental & specials' },
+  { id: 'amulet',   name: 'Amulet',      icon: 'amulet',  dmgWeight: 0.05, desc: 'Synergy & passives' },
 ];
 
 // ══════════════════════════════════════════════════════════════════
@@ -464,8 +464,8 @@ const PRESTIGE_UPGRADES = [
   { id:'p_dmg3',   name:'Eternal Fury',       icon:'🌟', desc:'×10 All Damage',      stat:'dmgMult',   val:9.00, cost:40  },
   { id:'p_gold1',  name:'Soul Wealth',        icon:'💰', desc:'×2 Gold',             stat:'goldFind',  val:1.00, cost:5   },
   { id:'p_gold2',  name:'Infinite Greed',     icon:'👑', desc:'×5 Gold',             stat:'goldFind',  val:4.00, cost:18  },
-  { id:'p_start1', name:'Head Start',         icon:'🚀', desc:'Start at Stage 50',   stat:'startStage', val:50,  cost:10  },
-  { id:'p_start2', name:'Veteran\'s Return',  icon:'🏆', desc:'Start at Stage 200',  stat:'startStage', val:200, cost:25  },
+  { id:'p_start1', name:'Head Start',         icon:'🚀', desc:'Start at Stage 50',   stat:'startZone', val:50,  cost:10  },
+  { id:'p_start2', name:'Veteran\'s Return',  icon:'🏆', desc:'Start at Stage 200',  stat:'startZone', val:200, cost:25  },
   { id:'p_pet1',   name:'Eternal Bond',       icon:'🐾', desc:'×3 Pet Damage',       stat:'petDmg',    val:2.00, cost:20  },
   { id:'p_skill1', name:'Ancient Arts',       icon:'🔮', desc:'×3 Skill Power',      stat:'skillDmg',  val:2.00, cost:20  },
   { id:'p_crit1',  name:'Shard Sight',        icon:'👁️', desc:'+50% Crit Chance',    stat:'critChance',val:0.50, cost:12  },
@@ -515,10 +515,189 @@ const DUNGEON_UPGRADES = [
   { id:'d_mat1',    name:'Alchemist Resonance',  icon:'🧪', desc:'+100% Material & Dust Drops in Raids', stat:'matMult',   val:1.00, costBase:25, costScale:1.75 },
 ];
 
+// ══════════════════════════════════════════════════════════════════
+// MINING NODES
+// ══════════════════════════════════════════════════════════════════
+const MINING_NODES = [
+  {
+    id: 'iron_node', name: 'Iron Ore Node', tier: 1, reqLevel: 1, baseTicks: 5, icon: '⛏️',
+    drops: [
+      { item: 'ironOre', min: 2, max: 5 },
+      { item: 'rubyCrystal', chance: 0.25, qty: 1 },
+      { item: 'uncutGem', chance: 0.10, qty: 1 }
+    ]
+  },
+  {
+    id: 'mithril_node', name: 'Mithril Vein', tier: 2, reqLevel: 5, baseTicks: 8, icon: '🔷',
+    drops: [
+      { item: 'mithrilOre', min: 2, max: 5 },
+      { item: 'sapphireCrystal', chance: 0.25, qty: 1 },
+      { item: 'uncutGem', chance: 0.20, qty: 1 }
+    ]
+  },
+  {
+    id: 'voidstone_node', name: 'Voidstone Quarry', tier: 3, reqLevel: 10, baseTicks: 12, icon: '🌑',
+    drops: [
+      { item: 'voidstoneOre', min: 2, max: 5 },
+      { item: 'emeraldCrystal', chance: 0.25, qty: 1 },
+      { item: 'flawlessGem', chance: 0.15, qty: 1 }
+    ]
+  },
+  {
+    id: 'starstone_node', name: 'Starstone Spire', tier: 4, reqLevel: 20, baseTicks: 20, icon: '⭐',
+    drops: [
+      { item: 'starstoneOre', min: 2, max: 5 },
+      { item: 'topazCrystal', chance: 0.25, qty: 1 },
+      { item: 'starGem', chance: 0.10, qty: 1 }
+    ]
+  }
+];
+
+// ══════════════════════════════════════════════════════════════════
+// SMELTING & FORGE RECIPES & GEMS
+// ══════════════════════════════════════════════════════════════════
+const SMELTING_RECIPES = [
+  { id: 'iron_alloy', name: 'Iron Alloy Ingot', inputs: { ironOre: 10, rubyCrystal: 2 }, output: { ironAlloy: 1 }, icon: '🧈' },
+  { id: 'mithril_ingot', name: 'Refined Mithril Ingot', inputs: { mithrilOre: 10, sapphireCrystal: 2 }, output: { mithrilIngot: 1 }, icon: '🔷' },
+  { id: 'void_plate', name: 'Voidstone Armor Plate', inputs: { voidstoneOre: 10, emeraldCrystal: 2 }, output: { voidPlate: 1 }, icon: '⬛' },
+  { id: 'star_matrix', name: 'Starstone Core Matrix', inputs: { starstoneOre: 10, topazCrystal: 2, starGem: 1 }, output: { starMatrix: 1 }, icon: '🌟' }
+];
+
+const FORGE_RECIPES = [
+  { id: 'mythic_weapon', slotId: 'weapon', name: 'Aegis Mythic Blade', inputs: { ironAlloy: 5, mithrilIngot: 5, chaosShards: 20 }, rarity: 'mythic' },
+  { id: 'mythic_chest', slotId: 'chest', name: 'Titanplate Mythic Cuirass', inputs: { voidPlate: 5, mithrilIngot: 5, anchorCrystals: 15 }, rarity: 'mythic' },
+  { id: 'cosmic_ring', slotId: 'ring', name: 'Singularity Ring of the Stars', inputs: { starMatrix: 3, starGem: 2, tierStones: 10 }, rarity: 'cosmic' }
+];
+
+const GEMS = [
+  { id: 'cut_ruby', name: 'Cut Ruby', stat: 'fireDmg', val: 0.15, icon: '🔴' },
+  { id: 'cut_sapphire', name: 'Cut Sapphire', stat: 'iceDmg', val: 0.15, icon: '🔵' },
+  { id: 'cut_emerald', name: 'Cut Emerald', stat: 'skillDmg', val: 0.20, icon: '🟢' },
+  { id: 'cut_topaz', name: 'Cut Topaz', stat: 'atkSpeed', val: 0.20, icon: '🟡' },
+  { id: 'star_diamond', name: 'Star Diamond', stat: 'dmgMult', val: 0.50, icon: '💎' }
+];
+
+// ══════════════════════════════════════════════════════════════════
+// ALCHEMY RECIPES
+// ══════════════════════════════════════════════════════════════════
+const ALCHEMY_RECIPES = [
+  // Battle Elixirs
+  { id: 'elixir_berserk', name: 'Berserker Elixir', type: 'elixir', duration: 300, brewTime: 30, inputs: { rubyCrystal: 3, chaosShards: 10 }, effect: { stat: 'dmgMult', val: 1.0 }, desc: '+100% All Damage for 5 min' },
+  { id: 'elixir_haste', name: 'Chrono Haste Elixir', type: 'elixir', duration: 300, brewTime: 30, inputs: { sapphireCrystal: 3, anchorCrystals: 5 }, effect: { stat: 'atkSpeed', val: 0.5 }, desc: '+50% Atk Speed for 5 min' },
+  // Utility Flasks
+  { id: 'flask_knowledge', name: 'Flask of Deep Knowledge', type: 'flask', duration: 600, brewTime: 60, inputs: { emeraldCrystal: 3, petEssence: 15 }, effect: { stat: 'expBonus', val: 2.0 }, desc: '+200% EXP Gain for 10 min' },
+  { id: 'flask_midas', name: 'Flask of Golden Midas', type: 'flask', duration: 600, brewTime: 60, inputs: { topazCrystal: 3, tierStones: 5 }, effect: { stat: 'goldFind', val: 3.0 }, desc: '+300% Gold Find for 10 min' },
+  // Permanent Stat Tonics
+  { id: 'tonic_strength', name: 'Permanent Strength Tonic', type: 'tonic', brewTime: 120, inputs: { starGem: 1, voidEssence: 5, chaosShards: 50 }, effect: { stat: 'dmgMult', val: 0.05 }, desc: 'Permanently +5% All Damage' },
+  { id: 'tonic_vitality', name: 'Permanent Vitality Tonic', type: 'tonic', brewTime: 120, inputs: { starGem: 1, anchorCrystals: 20, tierStones: 10 }, effect: { stat: 'maxHp', val: 0.10 }, desc: 'Permanently +10% Max HP' }
+];
+
+// ══════════════════════════════════════════════════════════════════
+// MASTERY TREES
+// ══════════════════════════════════════════════════════════════════
+const MASTERY_TREES = {
+  combat: {
+    id: 'combat', name: 'Combat Mastery', color: '#ef4444', icon: '⚔️',
+    nodes: [
+      { id: 'c1', name: 'Slayer\'s Wrath', maxLvl: 10, req: [], stat: 'dmgMult', valPerRank: 0.05, desc: '+5% Damage per rank' },
+      { id: 'c2', name: 'Precision Strikes', maxLvl: 10, req: ['c1'], stat: 'critChance', valPerRank: 0.02, desc: '+2% Crit Chance per rank' },
+      { id: 'c3', name: 'Overload Catalyst', maxLvl: 5, req: ['c2'], stat: 'overloadDmg', valPerRank: 0.25, desc: '+25% Overload Dmg per rank' }
+    ]
+  },
+  mining: {
+    id: 'mining', name: 'Mining Mastery', color: '#f59e0b', icon: '⛏️',
+    nodes: [
+      { id: 'm1', name: 'Vein Finder', maxLvl: 10, req: [], stat: 'oreYieldMult', valPerRank: 0.10, desc: '+10% Ore Yield per rank' },
+      { id: 'm2', name: 'Rapid Drilling', maxLvl: 10, req: ['m1'], stat: 'miningSpeed', valPerRank: 0.05, desc: '+5% Mining Speed per rank' },
+      { id: 'm3', name: 'Gem Prospector', maxLvl: 5, req: ['m2'], stat: 'gemFind', valPerRank: 0.10, desc: '+10% Gem Drop Chance per rank' }
+    ]
+  },
+  crafting: {
+    id: 'crafting', name: 'Crafting Mastery', color: '#3b82f6', icon: '⚒️',
+    nodes: [
+      { id: 'cr1', name: 'Alloy Saver', maxLvl: 10, req: [], stat: 'craftRefundChance', valPerRank: 0.03, desc: '+3% Refund Chance per rank' },
+      { id: 'cr2', name: 'Master Smithing', maxLvl: 10, req: ['cr1'], stat: 'forgeQuality', valPerRank: 0.05, desc: '+5% Forged Item Power per rank' },
+      { id: 'cr3', name: 'Socket Expertise', maxLvl: 5, req: ['cr2'], stat: 'socketBonus', valPerRank: 0.10, desc: '+10% Gem Socket Bonus per rank' }
+    ]
+  },
+  alchemy: {
+    id: 'alchemy', name: 'Alchemy Mastery', color: '#10b981', icon: '🧪',
+    nodes: [
+      { id: 'a1', name: 'Brewmaster', maxLvl: 10, req: [], stat: 'brewSpeed', valPerRank: 0.05, desc: '-5% Brewing Time per rank' },
+      { id: 'a2', name: 'Double Brew', maxLvl: 10, req: ['a1'], stat: 'doubleBrewChance', valPerRank: 0.04, desc: '+4% Chance for Double Brew' },
+      { id: 'a3', name: 'Tonic Potency', maxLvl: 5, req: ['a2'], stat: 'tonicPower', valPerRank: 0.20, desc: '+20% Tonic Effectiveness per rank' }
+    ]
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════
+// MONUMENTS
+// ══════════════════════════════════════════════════════════════════
+const MONUMENTS = [
+  {
+    id: 'obelisk_power', name: 'Obelisk of Eternal Power', icon: '🏛️',
+    costs: { ironAlloy: 10, voidPlate: 5, chaosShards: 50 },
+    costScale: 2.0, stat: 'dmgMult', val: 0.50, desc: '+50% All Damage per level (Multiplicative)'
+  },
+  {
+    id: 'shrine_abundance', name: 'Shrine of Abundance', icon: '⛩️',
+    costs: { mithrilIngot: 10, rubyCrystal: 10, sapphireCrystal: 10 },
+    costScale: 2.0, stat: 'goldFind', val: 1.00, desc: '+100% Gold Find per level (Multiplicative)'
+  },
+  {
+    id: 'forge_spire', name: 'Colossus Forge Spire', icon: '⚒️',
+    costs: { starMatrix: 5, starGem: 3, tierStones: 25 },
+    costScale: 2.5, stat: 'finalDmgMult', val: 0.25, desc: '×1.25 Final Damage Multiplier per level'
+  },
+  {
+    id: 'astral_altar', name: 'Astral Altar of Time', icon: '✨',
+    costs: { voidEssence: 20, starstoneOre: 50, starGem: 5 },
+    costScale: 3.0, stat: 'expBonus', val: 1.50, desc: '+150% EXP Gain per level (Multiplicative)'
+  }
+];
+
+// ══════════════════════════════════════════════════════════════════
+// COMBAT COMBOS
+// ══════════════════════════════════════════════════════════════════
+const SKILL_COMBOS = [
+  {
+    id: 'thermal_detonation', name: 'Thermal Detonation',
+    sequence: ['fire_bomb', 'frost_nova'],
+    dmgMult: 10, statusApply: { burn: 3, freeze: 3 },
+    log: '💥 COMBO DETONATION: Thermal Detonation unleashed!'
+  },
+  {
+    id: 'void_arc_cataclysm', name: 'Void Arc Cataclysm',
+    sequence: ['void_rift', 'thunder_call'],
+    dmgMult: 25, statusApply: { shadow: 4, lightning: 4 },
+    log: '⚡🌑 COMBO DETONATION: Void Arc Cataclysm unleashed!'
+  },
+  {
+    id: 'whirlwind_shatter', name: 'Whirlwind Shatter',
+    sequence: ['blade_storm', 'power_strike', 'blade_storm'],
+    dmgMult: 15, guaranteeCrit: true,
+    log: '⚔️ COMBO DETONATION: Whirlwind Shatter unleashed!'
+  }
+];
+
+// ══════════════════════════════════════════════════════════════════
+// CONSTELLATION NODES
+// ══════════════════════════════════════════════════════════════════
+const CONSTELLATION_NODES = [
+  { id: 'star_core', name: 'Star Core', cost: 10, req: [], icon: '⭐', stat: 'dmgMult', val: 0.10, desc: '+10% All Damage' },
+  { id: 'alpha_centauri', name: 'Alpha Centauri', cost: 25, req: ['star_core'], icon: '✨', stat: 'critDmg', val: 0.25, desc: '+25% Crit Damage' },
+  { id: 'sirius_prime', name: 'Sirius Prime', cost: 25, req: ['star_core'], icon: '🌟', stat: 'goldFind', val: 0.50, desc: '+50% Gold Find' },
+  { id: 'orion_nebula', name: 'Orion Nebula', cost: 50, req: ['alpha_centauri'], icon: '🌌', stat: 'allElemDmg', val: 1.00, desc: '+100% Elemental Damage' },
+  { id: 'supernova_burst', name: 'Supernova Burst', cost: 100, req: ['orion_nebula'], icon: '💥', stat: 'overloadDmg', val: 2.00, desc: '+200% Overload Damage' },
+  { id: 'hyperion_crown', name: 'Hyperion Crown', cost: 250, req: ['sirius_prime', 'supernova_burst'], icon: '👑', stat: 'finalDmgMult', val: 0.50, desc: '×1.50 Final Damage' }
+];
+
 // Expose all data
 window.GAME_DATA = {
   RARITIES, RARITY_INDEX, getRarityById, rollRarity,
   EQUIP_SLOTS, AFFIXES, EQUIP_BASES,
   ZONES, WORLDS, ENEMY_TYPES, BOSS_NAMES,
   PETS, SKILLS, UPGRADES, PRESTIGE_UPGRADES, DUNGEONS, DUNGEON_UPGRADES, RELICS, BANNERS,
+  MINING_NODES, SMELTING_RECIPES, FORGE_RECIPES, GEMS, ALCHEMY_RECIPES, MASTERY_TREES, MONUMENTS,
+  SKILL_COMBOS, CONSTELLATION_NODES,
 };

@@ -58,7 +58,15 @@ function f_Lambertw(z) {
 // ─── Core EN object ──────────────────────────────────────────────────────────
 const EN = {};
 
-function Cnew(Sign, Layer, Exp) { return { Sign, Layer, Exp }; }
+function Cnew(Sign, Layer, Exp) {
+  return {
+    Sign,
+    Layer,
+    Exp,
+    valueOf() { return EN.toNumber(this); },
+    toString() { return EN.toString(this); }
+  };
+}
 
 const ZERO   = Cnew(0, 0, 0);
 const ONE    = Cnew(1, 0, 1);

@@ -124,7 +124,7 @@ function defaultSave() {
     transcendences: 0,
     eternityFragments: 0,
 
-    // Crafting materials
+    // Crafting materials & sub-layer resources
     materials: {
       chaosShards: 10,
       anchorCrystals: 5,
@@ -132,7 +132,81 @@ function defaultSave() {
       voidEssence: 0,
       petEssence: 20,
       bossBlueprints: 0,
+      ironOre: 0,
+      mithrilOre: 0,
+      voidstoneOre: 0,
+      starstoneOre: 0,
+      rubyCrystal: 0,
+      sapphireCrystal: 0,
+      emeraldCrystal: 0,
+      topazCrystal: 0,
+      uncutGem: 0,
+      flawlessGem: 0,
+      starGem: 0,
+      ironAlloy: 0,
+      mithrilIngot: 0,
+      voidPlate: 0,
+      starMatrix: 0,
+      cut_ruby: 0,
+      cut_sapphire: 0,
+      cut_emerald: 0,
+      cut_topaz: 0,
+      star_diamond: 0
     },
+
+    // Mining Sub-Layer
+    mining: {
+      level: 1,
+      exp: 0,
+      activeNodeId: 'iron_node',
+      nodes: {
+        iron_node:      { progress: 0, level: 1, auto: true },
+        mithril_node:   { progress: 0, level: 1, auto: false },
+        voidstone_node: { progress: 0, level: 1, auto: false },
+        starstone_node: { progress: 0, level: 1, auto: false }
+      }
+    },
+
+    // Crafting / Forge Sub-Layer
+    crafting: {
+      level: 1,
+      exp: 0,
+      skillPoints: 0
+    },
+
+    // Alchemy Sub-Layer
+    alchemy: {
+      level: 1,
+      exp: 0,
+      skillPoints: 0,
+      activeBrew: null,
+      inventory: {},
+      activePotions: {},
+      tonicsUsed: {}
+    },
+
+    // Masteries Sub-Layer
+    masteries: {
+      points: { combat: 0, mining: 0, crafting: 0, alchemy: 0 },
+      allocations: { combat: {}, mining: {}, crafting: {}, alchemy: {} }
+    },
+
+    // Monuments Sub-Layer
+    monuments: {
+      obelisk_power: 0,
+      shrine_abundance: 0,
+      forge_spire: 0,
+      astral_altar: 0
+    },
+
+    // Constellation Star Tree
+    starDust: 0,
+    constellationTree: {
+      unlockedNodes: []
+    },
+
+    // Active skill combo history
+    comboHistory: [],
 
     // Gacha pity
     gachaPity: { pet: 0, skill: 0, gear: 0 },
@@ -175,6 +249,7 @@ function loadGame() {
     const raw = localStorage.getItem('eternityRPGSave');
     if (!raw) return null;
     const s = JSON.parse(raw);
+    const def = defaultSave();
     s.gold = EN.convert(s.gold);
     s.exp  = EN.convert(s.exp);
     s.totalDmgDone    = EN.convert(s.totalDmgDone);
@@ -184,6 +259,33 @@ function loadGame() {
       s.currentEnemy.maxHp = EN.convert(s.currentEnemy.maxHp);
       s.currentEnemy.gold  = EN.convert(s.currentEnemy.gold);
     }
+    if (!s.mining) s.mining = def.mining;
+    if (!s.crafting) s.crafting = def.crafting;
+    if (!s.alchemy) s.alchemy = def.alchemy;
+    if (!s.masteries) s.masteries = def.masteries;
+    if (!s.monuments) s.monuments = def.monuments;
+    if (s.starDust === undefined) s.starDust = def.starDust;
+    if (!s.constellationTree) s.constellationTree = def.constellationTree;
+    if (!s.comboHistory) s.comboHistory = [];
+    if (!s.materials) s.materials = def.materials;
+    for (const k in def.materials) {
+      if (s.materials[k] === undefined) s.materials[k] = def.materials[k];
+    }
+    for (const k in def.mining.nodes) {
+      if (!s.mining.nodes[k]) s.mining.nodes[k] = def.mining.nodes[k];
+    }
+    for (const k in def.masteries.points) {
+      if (s.masteries.points[k] === undefined) s.masteries.points[k] = 0;
+    }
+    for (const k in def.masteries.allocations) {
+      if (!s.masteries.allocations[k]) s.masteries.allocations[k] = {};
+    }
+    for (const k in def.monuments) {
+      if (s.monuments[k] === undefined) s.monuments[k] = 0;
+    }
+    if (!s.alchemy.inventory) s.alchemy.inventory = {};
+    if (!s.alchemy.activePotions) s.alchemy.activePotions = {};
+    if (!s.alchemy.tonicsUsed) s.alchemy.tonicsUsed = {};
     return s;
   } catch(e) { console.error('Load failed', e); return null; }
 }
@@ -266,31 +368,30 @@ function computeStats() {
     finalDmgMult:  1,
     finalPetMult:  1,
     finalGoldMult: 1,
-  };
 
-  const isMultMode = G.save.multiplicativeMode || false;
+    // Sub-layer & overload stats
+    overloadDmg:       0,
+    oreYieldMult:      0,
+    miningYieldMult:   1,
+    miningSpeed:       0,
+    gemFind:           0,
+    craftRefundChance: 0,
+    forgeQuality:      0,
+    socketBonus:       0,
+    brewSpeed:         0,
+    doubleBrewChance:  0,
+    tonicPower:        0,
+  };
 
   function applyMod(statKey, val) {
     if (!(statKey in cs)) return;
-    if (isMultMode) {
-      if (cs[statKey] === 0) {
-        cs[statKey] = val;
-      } else {
-        cs[statKey] *= (1 + val);
-      }
-    } else {
-      cs[statKey] += val;
-    }
+    cs[statKey] += val;
   }
 
   // Level bonus
   const lvl = G.save.level;
-  if (isMultMode) {
-    cs.dmgMult *= Math.pow(1.10, lvl - 1);
-    cs.goldFind *= Math.pow(1.08, lvl - 1);
-  } else {
-    cs.dmgMult += (lvl - 1) * 0.10;
-  }
+  cs.dmgMult += (lvl - 1) * 0.10;
+  cs.goldFind += (lvl - 1) * 0.06; // Gold scales with level so the economy keeps pace
 
   // Equipment affixes (8 slots)
   for (const slot of GAME_DATA.EQUIP_SLOTS) {
@@ -356,11 +457,7 @@ function computeStats() {
     if (up.oneTime) {
       applyMod(up.stat, up.val);
     } else {
-      if (isMultMode) {
-        applyMod(up.stat, Math.pow(1 + up.val, lvl) - 1);
-      } else {
-        applyMod(up.stat, up.val * lvl);
-      }
+      applyMod(up.stat, up.val * lvl);
     }
   }
 
@@ -368,11 +465,7 @@ function computeStats() {
   for (const r of GAME_DATA.RELICS) {
     const rLvl = G.save.relicLevels[r.id] || 0;
     if (rLvl > 0 && r.stat in cs) {
-      if (isMultMode) {
-        applyMod(r.stat, Math.pow(1 + r.val, rLvl) - 1);
-      } else {
-        applyMod(r.stat, r.val * rLvl);
-      }
+      applyMod(r.stat, r.val * rLvl);
     }
   }
 
@@ -385,52 +478,30 @@ function computeStats() {
 
   // Rebirths bonus
   if (G.save.rebirths > 0) {
-    if (isMultMode) {
-      cs.dmgMult  *= Math.pow(1.50, G.save.rebirths);
-      cs.goldFind *= Math.pow(1.30, G.save.rebirths);
-    } else {
-      cs.dmgMult  *= 1 + G.save.rebirths * 0.50;
-      cs.goldFind *= 1 + G.save.rebirths * 0.30;
-    }
+    cs.dmgMult  *= 1 + G.save.rebirths * 0.50;
+    cs.goldFind *= 1 + G.save.rebirths * 0.30;
   }
 
   // Stage pass stackable bonus & Big Zone Pass Mastery (Tap Titans style scaling)
   const maxStg = (G.save.maxStage || 1);
-  if (isMultMode) {
-    cs.goldFind *= Math.pow(1.05, maxStg - 1);
-    cs.expBonus *= Math.pow(1.05, maxStg - 1);
-  } else {
-    const stagePassBonus = (maxStg - 1) * 0.05; // +5% Gold & EXP per stage cleared!
-    cs.goldFind *= (1 + stagePassBonus);
-    cs.expBonus *= (1 + stagePassBonus);
-  }
+  const stagePassBonus = (maxStg - 1) * 0.05; // +5% Gold & EXP per stage cleared!
+  cs.goldFind *= (1 + stagePassBonus);
+  cs.expBonus *= (1 + stagePassBonus);
   
   const bigZonesCleared = Math.floor((maxStg - 1) / 10);
   if (bigZonesCleared > 0) {
-    if (isMultMode) {
-      const zoneMult = Math.pow(1.15, bigZonesCleared); // +15% Core Stats per big zone cleared!
-      cs.dmgMult    *= zoneMult;
-      cs.goldFind   *= zoneMult;
-      cs.expBonus   *= zoneMult;
-      cs.dropRate   *= zoneMult;
-    } else {
-      const zoneMult = 1 + (bigZonesCleared * 0.15); // +15% Core Stats per big zone cleared!
-      cs.dmgMult    *= zoneMult;
-      cs.goldFind   *= zoneMult;
-      cs.expBonus   *= zoneMult;
-      cs.dropRate   *= zoneMult;
-    }
+    const zoneMult = 1 + (bigZonesCleared * 0.15); // +15% Core Stats per big zone cleared!
+    cs.dmgMult    *= zoneMult;
+    cs.goldFind   *= zoneMult;
+    cs.expBonus   *= zoneMult;
+    cs.dropRate   *= zoneMult;
   }
 
   // Dungeon Upgrades & Level Clears
   for (const du of (GAME_DATA.DUNGEON_UPGRADES || [])) {
     const lvl = (G.save.dungeonUpgrades || {})[du.id] || 0;
     if (lvl > 0 && du.stat in cs) {
-      if (isMultMode) {
-        applyMod(du.stat, Math.pow(1 + du.val, lvl) - 1);
-      } else {
-        applyMod(du.stat, du.val * lvl);
-      }
+      applyMod(du.stat, du.val * lvl);
     }
   }
   const dLvls = G.save.dungeonLevels || {};
@@ -438,6 +509,100 @@ function computeStats() {
   if (dLvls.pet_reserve > 1) cs.petDmg *= (1 + (dLvls.pet_reserve - 1) * 0.10);
   if (dLvls.essence_shrine > 1) cs.dropRate *= (1 + (dLvls.essence_shrine - 1) * 0.05);
   if (dLvls.relic_spire > 1) cs.dmgMult *= (1 + (dLvls.relic_spire - 1) * 0.08);
+
+  // ── Sub-Layers Stat Integrations ──────────────────────────────
+  // 1. Masteries Passives
+  if (G.save.masteries && G.save.masteries.allocations && GAME_DATA.MASTERY_TREES) {
+    for (const treeKey in GAME_DATA.MASTERY_TREES) {
+      const tree = GAME_DATA.MASTERY_TREES[treeKey];
+      const allocs = G.save.masteries.allocations[treeKey] || {};
+      for (const node of tree.nodes) {
+        const rank = allocs[node.id] || 0;
+        if (rank > 0) {
+          const val = node.valPerRank * rank;
+          applyMod(node.stat, val);
+        }
+      }
+    }
+  }
+
+  // 2. Gem Sockets on Equipped Gear
+  if (G.save.equipped && GAME_DATA.GEMS) {
+    const socketMult = 1 + (cs.socketBonus || 0);
+    for (const slotId in G.save.equipped) {
+      const item = G.save.equipped[slotId];
+      if (item && Array.isArray(item.sockets)) {
+        for (const sock of item.sockets) {
+          if (sock && sock.gem) {
+            const gem = GAME_DATA.GEMS.find(g => g.id === sock.gem);
+            if (gem) {
+              applyMod(gem.stat, gem.val * socketMult);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Alchemy Active Potions & Permanent Tonics
+  if (G.save.alchemy && GAME_DATA.ALCHEMY_RECIPES) {
+    if (G.save.alchemy.activePotions) {
+      for (const potId in G.save.alchemy.activePotions) {
+        if (G.save.alchemy.activePotions[potId] > 0) {
+          const recipe = GAME_DATA.ALCHEMY_RECIPES.find(r => r.id === potId);
+          if (recipe && recipe.effect) {
+            applyMod(recipe.effect.stat, recipe.effect.val);
+          }
+        }
+      }
+    }
+    if (G.save.alchemy.tonicsUsed) {
+      const tonicMult = 1 + (cs.tonicPower || 0);
+      for (const tonicId in G.save.alchemy.tonicsUsed) {
+        const count = G.save.alchemy.tonicsUsed[tonicId] || 0;
+        if (count > 0) {
+          const recipe = GAME_DATA.ALCHEMY_RECIPES.find(r => r.id === tonicId);
+          if (recipe && recipe.effect) {
+            applyMod(recipe.effect.stat, recipe.effect.val * count * tonicMult);
+          }
+        }
+      }
+    }
+  }
+
+  // 4. Monuments
+  if (G.save.monuments && GAME_DATA.MONUMENTS) {
+    for (const mon of GAME_DATA.MONUMENTS) {
+      const lvl = G.save.monuments[mon.id] || 0;
+      if (lvl > 0) {
+        if (mon.stat === 'finalDmgMult') {
+          cs.finalDmgMult *= Math.pow(1 + mon.val, lvl);
+        } else if (mon.stat === 'dmgMult') {
+          cs.dmgMult *= Math.pow(1 + mon.val, lvl);
+        } else if (mon.stat === 'goldFind') {
+          cs.goldFind *= Math.pow(1 + mon.val, lvl);
+        } else if (mon.stat === 'expBonus') {
+          cs.expBonus *= Math.pow(1 + mon.val, lvl);
+        } else if (mon.stat in cs) {
+          applyMod(mon.stat, mon.val * lvl);
+        }
+      }
+    }
+  }
+
+  // 5. Constellation Star Tree
+  if (G.save.constellationTree && G.save.constellationTree.unlockedNodes && GAME_DATA.CONSTELLATION_NODES) {
+    for (const nodeId of G.save.constellationTree.unlockedNodes) {
+      const cNode = GAME_DATA.CONSTELLATION_NODES.find(n => n.id === nodeId);
+      if (cNode) {
+        if (cNode.stat === 'finalDmgMult') {
+          cs.finalDmgMult *= (1 + cNode.val);
+        } else {
+          applyMod(cNode.stat, cNode.val);
+        }
+      }
+    }
+  }
 
   // Apply final multipliers to core stats
   let totalStars = 0;
@@ -464,13 +629,9 @@ function computeStats() {
   cs.dmgMult  *= cs.finalDmgMult * starDpsMult;
   cs.petDmg   *= cs.finalPetMult;
   
-  // Star Gold Booster in Multiplicative Mode: 1.3^stars up to 1e300 to boost Gold Find to the sky!
-  if (isMultMode) {
-    const starGoldMult = Math.min(1e300, Math.pow(1.3, totalStars));
-    cs.goldFind *= cs.finalGoldMult * starGoldMult;
-  } else {
-    cs.goldFind *= cs.finalGoldMult;
-  }
+  // Star Gold Booster: 1.15^stars keeps gold economic scaling deeper via your collection
+  const starGoldMult = Math.min(1e300, Math.pow(1.15, totalStars));
+  cs.goldFind *= cs.finalGoldMult * starGoldMult;
 
   // Caps (CRIT CHANCE CAP REMOVED FOR WARFRAME MULTI-CRIT!)
   cs.dodgeChance  = Math.min(cs.dodgeChance, 0.75);
@@ -615,6 +776,7 @@ function spawnEnemy(stage, isBoss = false, isElite = false) {
     zoneId: worldIdx,
     stageNumber: stage,
     dropRarityBias: isBossFlag ? 4 : (isElite ? 1.8 : 1),
+    statuses: { burn: 0, freeze: 0, shadow: 0, lightning: 0 }
   };
 
   if (G.save) {
@@ -667,6 +829,42 @@ function dealDamage(multiplier = 1, isClick = false) {
 
   const elemBonus = safeNum(cs.allElemDmg) + safeNum(cs.fireDmg) + safeNum(cs.iceDmg) + safeNum(cs.lightningDmg) + safeNum(cs.shadowDmg) + safeNum(cs.holyDmg);
   dmg = EN.mul(dmg, EN.fromNumber(1 + elemBonus * 0.2));
+
+  // Elemental status application & overloads
+  if (G.save.currentEnemy) {
+    if (!G.save.currentEnemy.statuses) {
+      G.save.currentEnemy.statuses = { burn: 0, freeze: 0, shadow: 0, lightning: 0 };
+    }
+    const enemySt = G.save.currentEnemy.statuses;
+    if (safeNum(cs.fireDmg) > 0) enemySt.burn++;
+    if (safeNum(cs.iceDmg) > 0) enemySt.freeze++;
+    if (safeNum(cs.shadowDmg) > 0) enemySt.shadow++;
+    if (safeNum(cs.lightningDmg) > 0) enemySt.lightning++;
+
+    // Thermal Shock (Burn + Freeze)
+    if (enemySt.burn > 0 && enemySt.freeze > 0) {
+      const bStacks = enemySt.burn;
+      const fStacks = enemySt.freeze;
+      enemySt.burn--;
+      enemySt.freeze--;
+      const ovMult = 1 + safeNum(cs.overloadDmg, 0);
+      const thermalDmg = EN.mul(dmg, EN.fromNumber(5.0 * (bStacks + fStacks) * ovMult));
+      dmg = EN.add(dmg, thermalDmg);
+      if (G.save.showDmgNumbers) spawnDmgFloat('THERMAL SHOCK!', true, false, 2);
+    }
+
+    // Void Surge (Shadow + Lightning)
+    if (enemySt.shadow > 0 && enemySt.lightning > 0) {
+      const sStacks = enemySt.shadow;
+      const lStacks = enemySt.lightning;
+      enemySt.shadow--;
+      enemySt.lightning--;
+      const ovMult = 1 + safeNum(cs.overloadDmg, 0);
+      const voidDmg = EN.mul(dmg, EN.fromNumber(8.0 * (sStacks + lStacks) * ovMult));
+      dmg = EN.add(dmg, voidDmg);
+      if (G.save.showDmgNumbers) spawnDmgFloat('VOID SURGE!', true, false, 3);
+    }
+  }
 
   if (G.save.currentEnemy.isBoss)  dmg = EN.mul(dmg, EN.fromNumber(1 + safeNum(cs.bossDmg, 1)));
   if (G.save.currentEnemy.isElite) dmg = EN.mul(dmg, EN.fromNumber(1 + safeNum(cs.eliteDmg, 1)));
@@ -806,11 +1004,14 @@ function checkLevelUp() {
   }
   
   if (leveled) {
+    const gained = currentLevel - startLevel;
     G.save.exp = currentExp;
     G.save.level = currentLevel;
+    if (!G.save.masteries) G.save.masteries = defaultSave().masteries;
+    G.save.masteries.points.combat = (G.save.masteries.points.combat || 0) + gained;
     G.computedStats = computeStats();
     G.baseDmg = getBaseDmg();
-    addLog(`🎉 Bulk Level Up! Gained ${currentLevel - startLevel} levels! Now Level ${G.save.level}`, 'level');
+    addLog(`🎉 Bulk Level Up! Gained ${gained} levels! Now Level ${G.save.level}`, 'level');
     G.events.emit('levelup', G.save.level);
   }
 }
@@ -1108,6 +1309,9 @@ function addPet(petId) {
     existing.starCount = (existing.starCount || 0) + 1;
     existing.constellation = existing.starCount;
     G.save.materials.petEssence += 5;
+    const petData = GAME_DATA.PETS.find(p => p.id === petId);
+    const rIdx = (petData && GAME_DATA.RARITY_INDEX[petData.rarity]) ? GAME_DATA.RARITY_INDEX[petData.rarity] + 1 : 1;
+    G.save.starDust = (G.save.starDust || 0) + 10 * rIdx;
   } else {
     G.save.petCollection.push({ petId, level: 1, exp: 0, evolved: false, starCount: 0, constellation: 0, duplicates: 0 });
   }
@@ -1148,6 +1352,9 @@ function addSkill(skillId, type) {
     existing.starCount = (existing.starCount || 0) + 1;
     existing.constellation = existing.starCount;
     existing.level = Math.min(existing.level + 1, 10);
+    const skData = [...GAME_DATA.SKILLS.active, ...GAME_DATA.SKILLS.passive].find(s => s.id === skillId);
+    const rIdx = (skData && GAME_DATA.RARITY_INDEX[skData.rarity]) ? GAME_DATA.RARITY_INDEX[skData.rarity] + 1 : 1;
+    G.save.starDust = (G.save.starDust || 0) + 10 * rIdx;
   } else {
     G.save.skillCollection.push({ skillId, type, level: 1, starCount: 0, constellation: 0 });
   }
@@ -1174,6 +1381,35 @@ function useSkill(slot) {
 
   dealDamage(totalMult);
   addLog(`💫 Skill: ${skill.name} (×${totalMult.toFixed(1)} dmg)`, 'skill');
+
+  // Combo Detonation tracking
+  if (!G.save.comboHistory) G.save.comboHistory = [];
+  G.save.comboHistory.push(sid);
+  if (G.save.comboHistory.length > 5) G.save.comboHistory.shift();
+
+  if (GAME_DATA.SKILL_COMBOS) {
+    for (const combo of GAME_DATA.SKILL_COMBOS) {
+      const seq = combo.sequence;
+      if (G.save.comboHistory.length >= seq.length) {
+        const tail = G.save.comboHistory.slice(-seq.length);
+        if (tail.every((val, index) => val === seq[index])) {
+          const comboDmgMult = combo.dmgMult * (1 + safeNum(cs.skillDmg, 1));
+          dealDamage(comboDmgMult);
+          if (combo.statusApply && G.save.currentEnemy) {
+            if (!G.save.currentEnemy.statuses) G.save.currentEnemy.statuses = { burn: 0, freeze: 0, shadow: 0, lightning: 0 };
+            for (const st in combo.statusApply) {
+              G.save.currentEnemy.statuses[st] = (G.save.currentEnemy.statuses[st] || 0) + combo.statusApply[st];
+            }
+          }
+          addLog(combo.log, 'combat');
+          if (G.save.showDmgNumbers) spawnDmgFloat(combo.name + ' DETONATION!', true, false, 4);
+          G.save.comboHistory = [];
+          break;
+        }
+      }
+    }
+  }
+
   G.events.emit('skillUsed', { sid, slot });
   return true;
 }
@@ -1320,7 +1556,7 @@ function rebirth() {
   G.save.totalKills = 0;
   G.save.bossKills = 0;
   G.save.stageKills = 0;
-  G.save.currentStage = G.computedStats.startStage || 1;
+  G.save.currentStage = G.computedStats.startZone || 1;
   G.save.enemiesKilledInStage = 0;
   G.save.killStreak = 0;
   G.save.upgradeLevels = {};
@@ -1466,6 +1702,51 @@ function gameTick() {
     const cd = skill.cooldown * (1 - cs.cdReduction);
     if ((now - (G.save.skillCooldowns[sid] || 0)) >= cd * 1000) {
       useSkill(i);
+    }
+  }
+
+  // ── Sub-Layers Auto Ticks ───────────────────────────────────────
+  // 1. Auto-mining progress tick
+  if (G.save.mining && G.save.mining.nodes && GAME_DATA.MINING_NODES) {
+    const miningSpeedBonus = G.computedStats ? (G.computedStats.miningSpeed || 0) : 0;
+    for (const nodeKey in G.save.mining.nodes) {
+      const nodeState = G.save.mining.nodes[nodeKey];
+      if (nodeState && nodeState.auto) {
+        nodeState.progress = (nodeState.progress || 0) + (1 + miningSpeedBonus) * dt;
+        const nodeData = GAME_DATA.MINING_NODES.find(n => n.id === nodeKey);
+        if (nodeData && nodeState.progress >= nodeData.baseTicks) {
+          nodeState.progress = 0;
+          harvestMiningNode(nodeKey);
+        }
+      }
+    }
+  }
+
+  // 2. Alchemy brewing countdown tick
+  if (G.save.alchemy && G.save.alchemy.activeBrew) {
+    const brew = G.save.alchemy.activeBrew;
+    if (brew.secondsLeft > 0) {
+      brew.secondsLeft = Math.max(0, brew.secondsLeft - dt);
+    }
+  }
+
+  // 3. Active potions duration decay tick
+  if (G.save.alchemy && G.save.alchemy.activePotions) {
+    let updated = false;
+    for (const potId in G.save.alchemy.activePotions) {
+      if (G.save.alchemy.activePotions[potId] > 0) {
+        G.save.alchemy.activePotions[potId] -= dt;
+        if (G.save.alchemy.activePotions[potId] <= 0) {
+          delete G.save.alchemy.activePotions[potId];
+          updated = true;
+        }
+      } else {
+        delete G.save.alchemy.activePotions[potId];
+        updated = true;
+      }
+    }
+    if (updated) {
+      G.computedStats = computeStats();
     }
   }
 
@@ -1641,6 +1922,397 @@ function equipBestSkills() {
   G.computedStats = computeStats();
 }
 
+// ══════════════════════════════════════════════════════════════════
+// MINING ENGINE FUNCTIONS
+// ══════════════════════════════════════════════════════════════════
+function harvestMiningNode(nodeId) {
+  const nodeData = (GAME_DATA.MINING_NODES || []).find(n => n.id === nodeId);
+  if (!nodeData) return false;
+  if (!G.save.mining) G.save.mining = defaultSave().mining;
+  if (!G.save.mining.nodes[nodeId]) {
+    G.save.mining.nodes[nodeId] = { progress: 0, level: 1, auto: false };
+  }
+  const nodeState = G.save.mining.nodes[nodeId];
+  const nodeLvl = nodeState.level || 1;
+  const cs = G.computedStats || {};
+  const yieldMult = (1 + (nodeLvl - 1) * 0.1) * (1 + (cs.oreYieldMult || 0)) * (cs.miningYieldMult || 1);
+
+  if (Array.isArray(nodeData.drops)) {
+    for (const drop of nodeData.drops) {
+      if (drop.min !== undefined && drop.max !== undefined) {
+        const randRange = Math.floor(Math.random() * (drop.max - drop.min + 1)) + drop.min;
+        const qty = Math.max(1, Math.floor(randRange * yieldMult));
+        G.save.materials[drop.item] = (G.save.materials[drop.item] || 0) + qty;
+      } else if (drop.chance !== undefined) {
+        const gemChanceBonus = 1 + (cs.gemFind || 0);
+        if (Math.random() <= drop.chance * gemChanceBonus) {
+          const qty = drop.qty || 1;
+          G.save.materials[drop.item] = (G.save.materials[drop.item] || 0) + qty;
+        }
+      }
+    }
+  }
+
+  // Mining EXP
+  const expGain = nodeData.tier * 10;
+  G.save.mining.exp += expGain;
+  checkMiningLevelUp();
+  return true;
+}
+
+function checkMiningLevelUp() {
+  if (!G.save.mining) return;
+  let reqExp = G.save.mining.level * 100;
+  while (G.save.mining.exp >= reqExp) {
+    G.save.mining.exp -= reqExp;
+    G.save.mining.level += 1;
+    if (!G.save.masteries) G.save.masteries = defaultSave().masteries;
+    G.save.masteries.points.mining = (G.save.masteries.points.mining || 0) + 1;
+    addLog(`⛏️ Mining Level Up! Now Level ${G.save.mining.level} (+1 Mining Mastery Point)`, 'loot');
+    reqExp = G.save.mining.level * 100;
+  }
+}
+
+function mineNodeManual(nodeId) {
+  const nodeData = (GAME_DATA.MINING_NODES || []).find(n => n.id === nodeId);
+  if (!nodeData) return false;
+  if ((G.save.level || 1) < nodeData.reqLevel) return false;
+  if (!G.save.mining) G.save.mining = defaultSave().mining;
+  if (!G.save.mining.nodes[nodeId]) {
+    G.save.mining.nodes[nodeId] = { progress: 0, level: 1, auto: false };
+  }
+  const nodeState = G.save.mining.nodes[nodeId];
+  nodeState.progress = (nodeState.progress || 0) + 1;
+  if (nodeState.progress >= nodeData.baseTicks) {
+    nodeState.progress = 0;
+    harvestMiningNode(nodeId);
+  }
+  return true;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// FORGE & CRAFTING ENGINE FUNCTIONS
+// ══════════════════════════════════════════════════════════════════
+function checkCraftingLevelUp() {
+  if (!G.save.crafting) return;
+  let reqExp = G.save.crafting.level * 100;
+  while (G.save.crafting.exp >= reqExp) {
+    G.save.crafting.exp -= reqExp;
+    G.save.crafting.level += 1;
+    if (!G.save.masteries) G.save.masteries = defaultSave().masteries;
+    G.save.masteries.points.crafting = (G.save.masteries.points.crafting || 0) + 1;
+    addLog(`⚒️ Crafting Level Up! Now Level ${G.save.crafting.level} (+1 Crafting Mastery Point)`, 'loot');
+    reqExp = G.save.crafting.level * 100;
+  }
+}
+
+function smeltAlloy(recipeId) {
+  const recipe = (GAME_DATA.SMELTING_RECIPES || []).find(r => r.id === recipeId);
+  if (!recipe) return false;
+  // Check inputs
+  for (const matKey in recipe.inputs) {
+    if ((G.save.materials[matKey] || 0) < recipe.inputs[matKey]) {
+      return false;
+    }
+  }
+  // Deduct inputs (check craftRefundChance)
+  const cs = G.computedStats || {};
+  const isRefund = Math.random() < (cs.craftRefundChance || 0);
+  if (!isRefund) {
+    for (const matKey in recipe.inputs) {
+      G.save.materials[matKey] -= recipe.inputs[matKey];
+    }
+  } else {
+    addLog(`✨ Alloy Saver! Ingredients preserved for ${recipe.name}!`, 'loot');
+  }
+  // Award output
+  for (const matKey in recipe.output) {
+    G.save.materials[matKey] = (G.save.materials[matKey] || 0) + recipe.output[matKey];
+  }
+  if (!G.save.crafting) G.save.crafting = defaultSave().crafting;
+  G.save.crafting.exp += 25;
+  checkCraftingLevelUp();
+  return true;
+}
+
+function forgeEquipment(recipeId) {
+  const recipe = (GAME_DATA.FORGE_RECIPES || []).find(r => r.id === recipeId);
+  if (!recipe) return null;
+  // Check inputs
+  for (const matKey in recipe.inputs) {
+    if ((G.save.materials[matKey] || 0) < recipe.inputs[matKey]) {
+      return null;
+    }
+  }
+  // Deduct inputs
+  for (const matKey in recipe.inputs) {
+    G.save.materials[matKey] -= recipe.inputs[matKey];
+  }
+
+  const item = generateItem(recipe.slotId, recipe.rarity);
+  if (item) {
+    item.id = recipe.id;
+    item.name = recipe.name;
+    item.sockets = [{ gem: null }, { gem: null }];
+    G.save.inventory.push(item);
+  }
+
+  if (!G.save.crafting) G.save.crafting = defaultSave().crafting;
+  G.save.crafting.exp += 50;
+  checkCraftingLevelUp();
+  return item;
+}
+
+function socketGem(itemUid, socketIdx, gemId) {
+  if ((G.save.materials[gemId] || 0) <= 0) return false;
+  let targetItem = G.save.inventory.find(i => i && i.uid === itemUid);
+  if (!targetItem && G.save.equipped) {
+    for (const slotKey in G.save.equipped) {
+      const eq = G.save.equipped[slotKey];
+      if (eq && eq.uid === itemUid) { targetItem = eq; break; }
+    }
+  }
+  if (!targetItem) return false;
+  if (!Array.isArray(targetItem.sockets)) targetItem.sockets = [{ gem: null }, { gem: null }];
+  if (socketIdx < 0 || socketIdx >= targetItem.sockets.length) return false;
+
+  const oldGem = targetItem.sockets[socketIdx].gem;
+  if (oldGem) {
+    G.save.materials[oldGem] = (G.save.materials[oldGem] || 0) + 1;
+  }
+  targetItem.sockets[socketIdx].gem = gemId;
+  G.save.materials[gemId] -= 1;
+  G.computedStats = computeStats();
+  return true;
+}
+
+function unsocketGem(itemUid, socketIdx) {
+  let targetItem = G.save.inventory.find(i => i && i.uid === itemUid);
+  if (!targetItem && G.save.equipped) {
+    for (const slotKey in G.save.equipped) {
+      const eq = G.save.equipped[slotKey];
+      if (eq && eq.uid === itemUid) { targetItem = eq; break; }
+    }
+  }
+  if (!targetItem || !Array.isArray(targetItem.sockets)) return false;
+  if (socketIdx < 0 || socketIdx >= targetItem.sockets.length) return false;
+
+  const gemId = targetItem.sockets[socketIdx].gem;
+  if (!gemId) return false;
+
+  targetItem.sockets[socketIdx].gem = null;
+  G.save.materials[gemId] = (G.save.materials[gemId] || 0) + 1;
+  G.computedStats = computeStats();
+  return true;
+}
+
+function rerollAffixesWithLocks(itemUid, lockedIndices = []) {
+  let targetItem = G.save.inventory.find(i => i && i.uid === itemUid);
+  if (!targetItem && G.save.equipped) {
+    for (const slotKey in G.save.equipped) {
+      const eq = G.save.equipped[slotKey];
+      if (eq && eq.uid === itemUid) { targetItem = eq; break; }
+    }
+  }
+  if (!targetItem || !Array.isArray(targetItem.affixes)) return false;
+
+  const unlockedCount = targetItem.affixes.length - lockedIndices.length;
+  const chaosCost = Math.max(5, unlockedCount * 5);
+  const lockCost = lockedIndices.length * 2;
+
+  if ((G.save.materials.chaosShards || 0) < chaosCost) return false;
+  if (lockCost > 0 && (G.save.materials.anchorCrystals || 0) < lockCost) return false;
+
+  G.save.materials.chaosShards -= chaosCost;
+  if (lockCost > 0) G.save.materials.anchorCrystals -= lockCost;
+
+  const pool = GAME_DATA.AFFIXES[targetItem.slotId] || [];
+  const rarityObj = GAME_DATA.getRarityById(targetItem.rarity);
+  const tierMax = Math.min(rarityObj.affixCount, 5);
+
+  targetItem.affixes = targetItem.affixes.map((af, idx) => {
+    if (lockedIndices.includes(idx)) return af;
+    const poolAf = pool[Math.floor(Math.random() * pool.length)];
+    if (!poolAf) return af;
+    const tierIdx = Math.min(Math.floor(Math.random() * tierMax), poolAf.tiers.length - 1);
+    return { id: poolAf.id, stat: poolAf.stat, tier: tierIdx + 1, tierVal: poolAf.tiers[tierIdx] };
+  });
+
+  G.computedStats = computeStats();
+  return true;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ALCHEMY ENGINE FUNCTIONS
+// ══════════════════════════════════════════════════════════════════
+function checkAlchemyLevelUp() {
+  if (!G.save.alchemy) return;
+  let reqExp = G.save.alchemy.level * 100;
+  while (G.save.alchemy.exp >= reqExp) {
+    G.save.alchemy.exp -= reqExp;
+    G.save.alchemy.level += 1;
+    if (!G.save.masteries) G.save.masteries = defaultSave().masteries;
+    G.save.masteries.points.alchemy = (G.save.masteries.points.alchemy || 0) + 1;
+    addLog(`🧪 Alchemy Level Up! Now Level ${G.save.alchemy.level} (+1 Alchemy Mastery Point)`, 'loot');
+    reqExp = G.save.alchemy.level * 100;
+  }
+}
+
+function startBrewing(recipeId) {
+  const recipe = (GAME_DATA.ALCHEMY_RECIPES || []).find(r => r.id === recipeId);
+  if (!recipe) return false;
+  if (!G.save.alchemy) G.save.alchemy = defaultSave().alchemy;
+  if (G.save.alchemy.activeBrew) return false;
+
+  for (const matKey in recipe.inputs) {
+    if ((G.save.materials[matKey] || 0) < recipe.inputs[matKey]) {
+      return false;
+    }
+  }
+  for (const matKey in recipe.inputs) {
+    G.save.materials[matKey] -= recipe.inputs[matKey];
+  }
+
+  const cs = G.computedStats || {};
+  const brewSpeedMult = 1 - Math.min(0.80, (cs.brewSpeed || 0));
+  const totalSec = Math.max(1, Math.floor(recipe.brewTime * brewSpeedMult));
+
+  G.save.alchemy.activeBrew = {
+    recipeId: recipe.id,
+    secondsLeft: totalSec,
+    totalSeconds: totalSec
+  };
+  return true;
+}
+
+function claimBrewedPotion() {
+  if (!G.save.alchemy || !G.save.alchemy.activeBrew) return false;
+  const brew = G.save.alchemy.activeBrew;
+  if (brew.secondsLeft > 0) return false;
+
+  const cs = G.computedStats || {};
+  const dblChance = cs.doubleBrewChance || 0;
+  const qty = (Math.random() < dblChance) ? 2 : 1;
+
+  if (!G.save.alchemy.inventory) G.save.alchemy.inventory = {};
+  G.save.alchemy.inventory[brew.recipeId] = (G.save.alchemy.inventory[brew.recipeId] || 0) + qty;
+  G.save.alchemy.activeBrew = null;
+
+  G.save.alchemy.exp += 30;
+  checkAlchemyLevelUp();
+  return true;
+}
+
+function usePotion(potionId) {
+  const recipe = (GAME_DATA.ALCHEMY_RECIPES || []).find(r => r.id === potionId);
+  if (!recipe) return false;
+  if (!G.save.alchemy) G.save.alchemy = defaultSave().alchemy;
+
+  if (recipe.type === 'elixir' || recipe.type === 'flask') {
+    const invCount = G.save.alchemy.inventory[potionId] || 0;
+    if (invCount <= 0) return false;
+    G.save.alchemy.inventory[potionId] -= 1;
+    if (!G.save.alchemy.activePotions) G.save.alchemy.activePotions = {};
+    G.save.alchemy.activePotions[potionId] = (G.save.alchemy.activePotions[potionId] || 0) + recipe.duration;
+  } else if (recipe.type === 'tonic') {
+    const invCount = G.save.alchemy.inventory[potionId] || 0;
+    if (invCount > 0) {
+      G.save.alchemy.inventory[potionId] -= 1;
+    } else {
+      for (const matKey in recipe.inputs) {
+        if ((G.save.materials[matKey] || 0) < recipe.inputs[matKey]) return false;
+      }
+      for (const matKey in recipe.inputs) {
+        G.save.materials[matKey] -= recipe.inputs[matKey];
+      }
+    }
+    if (!G.save.alchemy.tonicsUsed) G.save.alchemy.tonicsUsed = {};
+    G.save.alchemy.tonicsUsed[potionId] = (G.save.alchemy.tonicsUsed[potionId] || 0) + 1;
+  }
+  G.computedStats = computeStats();
+  return true;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MASTERIES ENGINE FUNCTIONS
+// ══════════════════════════════════════════════════════════════════
+function allocateMasteryPoint(treeId, nodeId) {
+  if (!G.save.masteries) G.save.masteries = defaultSave().masteries;
+  const availPoints = G.save.masteries.points[treeId] || 0;
+  if (availPoints <= 0) return false;
+
+  const tree = GAME_DATA.MASTERY_TREES?.[treeId];
+  if (!tree) return false;
+  const node = tree.nodes.find(n => n.id === nodeId);
+  if (!node) return false;
+
+  const currentAlloc = G.save.masteries.allocations[treeId] || {};
+  const currentRank = currentAlloc[nodeId] || 0;
+  if (currentRank >= node.maxLvl) return false;
+
+  if (Array.isArray(node.req)) {
+    for (const reqId of node.req) {
+      if ((currentAlloc[reqId] || 0) <= 0) return false;
+    }
+  }
+
+  G.save.masteries.points[treeId] -= 1;
+  if (!G.save.masteries.allocations[treeId]) G.save.masteries.allocations[treeId] = {};
+  G.save.masteries.allocations[treeId][nodeId] = currentRank + 1;
+  G.computedStats = computeStats();
+  return true;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MONUMENTS ENGINE FUNCTIONS
+// ══════════════════════════════════════════════════════════════════
+function buildMonument(monumentId) {
+  const mon = (GAME_DATA.MONUMENTS || []).find(m => m.id === monumentId);
+  if (!mon) return false;
+  if (!G.save.monuments) G.save.monuments = defaultSave().monuments;
+
+  const currentLvl = G.save.monuments[monumentId] || 0;
+
+  for (const costKey in mon.costs) {
+    const reqQty = Math.floor(mon.costs[costKey] * Math.pow(mon.costScale, currentLvl));
+    if ((G.save.materials[costKey] || 0) < reqQty) {
+      return false;
+    }
+  }
+
+  for (const costKey in mon.costs) {
+    const reqQty = Math.floor(mon.costs[costKey] * Math.pow(mon.costScale, currentLvl));
+    G.save.materials[costKey] -= reqQty;
+  }
+
+  G.save.monuments[monumentId] = currentLvl + 1;
+  G.computedStats = computeStats();
+  return true;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CONSTELLATION STAR TREE ENGINE FUNCTIONS
+// ══════════════════════════════════════════════════════════════════
+function unlockStarNode(nodeId) {
+  const node = (GAME_DATA.CONSTELLATION_NODES || []).find(n => n.id === nodeId);
+  if (!node) return false;
+  if (!G.save.constellationTree) G.save.constellationTree = { unlockedNodes: [] };
+
+  if (G.save.constellationTree.unlockedNodes.includes(nodeId)) return false;
+  if ((G.save.starDust || 0) < node.cost) return false;
+
+  if (Array.isArray(node.req)) {
+    for (const reqId of node.req) {
+      if (!G.save.constellationTree.unlockedNodes.includes(reqId)) return false;
+    }
+  }
+
+  G.save.starDust -= node.cost;
+  G.save.constellationTree.unlockedNodes.push(nodeId);
+  G.computedStats = computeStats();
+  return true;
+}
+
 function initGame() {
   const saved = loadGame();
   G.save = saved || defaultSave();
@@ -1715,6 +2387,21 @@ function initGame() {
 
   setInterval(saveGame, 30000);
   setInterval(gameTick, 100);
+
+  // Expose Sub-Layer API
+  G.mineNodeManual       = mineNodeManual;
+  G.harvestMiningNode    = harvestMiningNode;
+  G.smeltAlloy           = smeltAlloy;
+  G.forgeEquipment       = forgeEquipment;
+  G.socketGem            = socketGem;
+  G.unsocketGem          = unsocketGem;
+  G.rerollAffixesWithLocks = rerollAffixesWithLocks;
+  G.startBrewing         = startBrewing;
+  G.claimBrewedPotion    = claimBrewedPotion;
+  G.usePotion            = usePotion;
+  G.allocateMasteryPoint = allocateMasteryPoint;
+  G.buildMonument        = buildMonument;
+  G.unlockStarNode       = unlockStarNode;
 
   // Expose API
   G.computeStats    = computeStats;

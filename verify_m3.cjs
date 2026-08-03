@@ -12,13 +12,13 @@ const indexPath = path.join(__dirname, 'index.html');
 const indexHtml = fs.readFileSync(indexPath, 'utf8');
 
 const requiredScriptTags = [
-  'js/eternitynum_v3.js?v=6',
-  'js/data_v3.js?v=6',
-  'js/game_v3.js?v=6',
-  'js/ui_v3.js?v=6'
+  'js/eternitynum_v3.js?v=7',
+  'js/data_v3.js?v=7',
+  'js/game_v3.js?v=7',
+  'js/ui_v3.js?v=7'
 ];
 
-console.log('1. Checking script tags in index.html for ?v=6...');
+console.log('1. Checking script tags in index.html for ?v=7...');
 for (const tag of requiredScriptTags) {
   assert(indexHtml.includes(tag), `Missing expected script tag: ${tag}`);
   console.log(`  ✓ Found script tag: ${tag}`);
@@ -145,24 +145,24 @@ UI.renderEnemy();
 assert.strictEqual(elements['stage-number-label'].textContent, 'STAGE 47');
 assert.strictEqual(elements['monsters-tracker-container'].style.display, 'none');
 assert.strictEqual(elements['boss-timer-container'].style.display, 'flex');
-assert.strictEqual(elements['boss-timer-text'].textContent, '⚔️ BOSS FIGHT — 39.2s remaining');
+assert(elements['boss-timer-text'].textContent.includes('BOSS FIGHT') && elements['boss-timer-text'].textContent.includes('39.2s remaining'), 'Boss timer text check');
 assert.strictEqual(elements['boss-timer-fill'].style.width, '87.11111111111111%');
-console.log('  ✓ Boss fight UI verified (⚔️ BOSS FIGHT — 39.2s remaining, Red timer bar 87.1%)');
+console.log('  ✓ Boss fight UI verified (BOSS FIGHT — 39.2s remaining, Red timer bar 87.1%)');
 
 // Test 3: Auto-Advance Toggle Functionality
 assert.strictEqual(G.save.autoAdvance, true);
 UI.renderAutoAdvanceBtn();
-assert.strictEqual(elements['auto-advance-btn'].textContent, '🚀 Auto-Advance: ON');
+assert(elements['auto-advance-btn'].textContent.includes('Auto-Advance: ON'), 'Auto-advance button text ON check');
 assert(elements['auto-advance-btn'].classList.contains('active'));
 
 UI.toggleAutoAdvance();
 assert.strictEqual(G.save.autoAdvance, false);
-assert.strictEqual(elements['auto-advance-btn'].textContent, '⏸️ Auto-Advance: OFF');
+assert(elements['auto-advance-btn'].textContent.includes('Auto-Advance: OFF'), 'Auto-advance button text OFF check');
 assert(elements['auto-advance-btn'].classList.contains('disabled'));
 
 UI.toggleAutoAdvance();
 assert.strictEqual(G.save.autoAdvance, true);
-assert.strictEqual(elements['auto-advance-btn'].textContent, '🚀 Auto-Advance: ON');
+assert(elements['auto-advance-btn'].textContent.includes('Auto-Advance: ON'), 'Auto-advance button text ON check');
 assert(elements['auto-advance-btn'].classList.contains('active'));
 
 console.log('  ✓ Auto-Advance toggle verified (bound to G.save.autoAdvance, text/style updates correctly)\n');
